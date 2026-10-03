@@ -1,6 +1,6 @@
 ## 📌 Proje Hakkında
 
--Tıklayıp inceleyiniz  = ** 🔗(https://omr-frontend-bm3il654p-martha9.vercel.app/)**
+-** Tıklayıp inceleyiniz  = 🔗(https://omr-frontend-bm3il654p-martha9.vercel.app/)**
 **OptiMatrix**, kağıt üzerindeki optik işaretli (bubble) sınav formlarını kamera akışından veya taranmış görsellerden yüksek hassasiyetle okuyan, öğrenci numaralarını ve şıkları otomatik puanlayan modern bir web uygulamasıdır. 
 Sistemde hata payı yüksek olan el yazısı tanıma (OCR) kullanılmaz; **öğrenci numaraları ve cevaplar tamamen optik baloncuk matrisi üzerinden çözümlenir.**
 ---
