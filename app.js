@@ -763,9 +763,9 @@ function renderLiveSettingsSheet() {
     `;
   });
 
-  // ÖSYM Tarzı Ad Soyad Dikey Harf Kodlama Izgarası (30 Karakter, A-Z)
+  // ÖSYM Tarzı Ad Soyad Dikey Harf Kodlama Izgarası (25 Karakter, A-Z)
   const alphabet = ['A', 'B', 'C', 'Ç', 'D', 'E', 'F', 'G', 'H', 'I', 'İ', 'J', 'K', 'L', 'M', 'N', 'O', 'Ö', 'P', 'R', 'S', 'Ş', 'T', 'U', 'Ü', 'V', 'Y', 'Z'];
-  const nameCols = 30; // 30 karakterlik Ad-Soyad kodlama sütunu
+  const nameCols = 25; // 25 karakterlik Ad-Soyad kodlama sütunu
   let osymNameColsHTML = '';
   for (let c = 0; c < nameCols; c++) {
     let bubblesCol = '';
@@ -858,9 +858,9 @@ function renderLiveSettingsSheet() {
             </div>
           </div>
 
-          <!-- 3. ALT: ÖSYM Harf Kodlama Alanı (30 Karakter, Dikey A-Z) -->
+          <!-- 3. ALT: ÖSYM Harf Kodlama Alanı (25 Karakter, Dikey A-Z) -->
           <div class="osym-coding-box">
-            <div class="osym-coding-title">AD VE SOYAD KODLAMA ALANI (30 KARAKTER - ÖSYM FORMATI)</div>
+            <div class="osym-coding-title">AD VE SOYAD KODLAMA ALANI (25 KARAKTER - ÖSYM FORMATI)</div>
             <div class="osym-alphabet-grid">
               ${osymNameColsHTML}
             </div>

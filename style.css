@@ -1928,11 +1928,11 @@ input:checked + .slider-small:before { transform: translateX(14px); }
   letter-spacing: 0.02em;
 }
 
-/* 30 Sütunlu Ad Soyad Matrisi - Boşluksuz, Sınırları Tam Dolduran Düzen */
+/* 25 Sütunlu Ad Soyad Matrisi - Boşluksuz, Sınırları Tam Dolduran Düzen */
 .osym-alphabet-grid {
   display: grid;
-  grid-template-columns: repeat(30, 1fr);
-  gap: 1.5px;
+  grid-template-columns: repeat(25, 1fr);
+  gap: 2px;
   width: 100%;
   box-sizing: border-box;
 }
@@ -1947,24 +1947,24 @@ input:checked + .slider-small:before { transform: translateX(14px); }
 
 .osym-char-box {
   width: 100%;
-  max-width: 13px;
-  height: 12px;
+  max-width: 15px;
+  height: 13px;
   border: 1px solid #000000;
   margin-bottom: 1.5px;
-  font-size: 0.46rem;
+  font-size: 0.5rem;
   font-weight: 800;
   text-align: center;
-  line-height: 12px;
+  line-height: 13px;
   background-color: #f8fafc;
   box-sizing: border-box;
 }
 
 .osym-bubble {
-  width: 9.5px;
-  height: 9.5px;
+  width: 10.5px;
+  height: 10.5px;
   border: 1px solid #000000;
   border-radius: 50%;
-  font-size: 0.38rem;
+  font-size: 0.42rem;
   font-weight: bold;
   display: flex;
   align-items: center;
