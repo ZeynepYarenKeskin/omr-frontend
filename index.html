@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>OptiMatrix - Kurumsal Optik Form Oluşturma ve Değerlendirme Platformu</title>
+  <title>OptiMatrix - Kurumsal Optik Okuyucu & Sınav Değerlendirme Platformu</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -18,7 +18,7 @@
        ========================================================================= -->
   <header class="app-header">
     <div class="header-inner">
-      <div class="brand" onclick="goHome()">
+      <div class="brand" onclick="onBrandClick()">
         <div class="brand-logo">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
             <rect x="3" y="3" width="18" height="18" rx="4" />
@@ -35,45 +35,58 @@
         </div>
       </div>
 
-      <div class="header-center" id="wizard-stepper-header" style="display: none;">
-        <!-- Sihirbaz Adım Göstergesi (Header İçinde Kompakt) -->
-        <div class="stepper-compact">
-          <div class="step-badge" id="step-badge-1" onclick="jumpToStep(1)">
-            <span class="step-num">1</span>
-            <span class="step-text">Form Yapılandırma</span>
-          </div>
-          <div class="step-divider"></div>
-          <div class="step-badge" id="step-badge-2" onclick="jumpToStep(2)">
-            <span class="step-num">2</span>
-            <span class="step-text">Cevap Anahtarı</span>
-          </div>
-          <div class="step-divider"></div>
-          <div class="step-badge" id="step-badge-3" onclick="jumpToStep(3)">
-            <span class="step-num">3</span>
-            <span class="step-text">Kağıt Yükleme</span>
-          </div>
-          <div class="step-divider"></div>
-          <div class="step-badge" id="step-badge-4" onclick="jumpToStep(4)">
-            <span class="step-num">4</span>
-            <span class="step-text">Sonuç & Rapor</span>
-          </div>
-        </div>
-      </div>
+      <!-- Uygulama İçi Ana Menü (Sadece Giriş Yapıldığında Görünür) -->
+      <nav class="app-nav-links hidden" id="app-nav-menu">
+        <button class="nav-tab-btn active" id="nav-btn-dashboard" onclick="switchAppTab('dashboard')">
+          <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          <span>Ana Sayfa</span>
+        </button>
 
+        <button class="nav-tab-btn" id="nav-btn-scan" onclick="switchAppTab('scan')">
+          <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <span>Kağıt Yükleme & Tarama</span>
+        </button>
+
+        <button class="nav-tab-btn" id="nav-btn-results" onclick="switchAppTab('results')">
+          <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+          <span>Sonuçlar & Sıralama</span>
+        </button>
+
+        <button class="nav-tab-btn" id="nav-btn-settings" onclick="switchAppTab('settings')">
+          <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          <span>Ayarlar & Sınav</span>
+        </button>
+      </nav>
+
+      <!-- Sağ Eylemler: Tema, Giriş/Kayıt veya Kullanıcı Profili -->
       <div class="header-actions">
+        <!-- Tema Değiştirici -->
         <button class="icon-btn" onclick="toggleTheme()" title="Temayı Değiştir" id="theme-btn">
           <svg id="theme-sun" class="icon hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
           <svg id="theme-moon" class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
         </button>
 
-        <button class="btn btn-outline btn-sm hidden" id="reset-session-btn" onclick="confirmResetSession()">
-          <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
-          Yeni Sınav Başlat
+        <!-- Form Önizle Butonu (Uygulama içinde) -->
+        <button class="btn btn-secondary btn-sm hidden" id="quick-preview-btn" onclick="openLiveFormPreviewModal()">
+          <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+          <span class="desktop-only">A4 Form Yazdır</span>
         </button>
 
-        <div class="status-indicator-pill">
-          <span class="status-dot online"></span>
-          <span class="status-label">SaaS v2.4</span>
+        <!-- Giriş Yapılmamışsa: Giriş Butonu -->
+        <button class="btn btn-primary btn-sm" id="header-login-btn" onclick="navigateTo('auth')">
+          Giriş Yap / Kayıt Ol
+        </button>
+
+        <!-- Giriş Yapılmışsa: Kullanıcı Bilgisi ve Çıkış -->
+        <div class="user-profile-menu hidden" id="user-profile-widget">
+          <div class="user-avatar" id="user-avatar-initials">ÖK</div>
+          <div class="user-meta desktop-only">
+            <span class="user-name" id="user-name-display">Öğretmen Hesabı</span>
+            <span class="user-role">Fakülte Koordinatörü</span>
+          </div>
+          <button class="icon-btn danger-hover" onclick="handleLogout()" title="Oturumu Kapat">
+            <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          </button>
         </div>
       </div>
     </div>
@@ -83,7 +96,7 @@
   <div id="toast-container" class="toast-container"></div>
 
   <!-- =========================================================================
-       2. AÇILIŞ / TANITIM EKRANI (LANDING SCREEN)
+       2. AÇILIŞ (LANDING / TANITIM) EKRANI
        ========================================================================= -->
   <section id="view-landing" class="view-section active">
     <div class="landing-hero">
@@ -97,13 +110,13 @@
           <span class="text-gradient">Optik Sınav Değerlendirme</span>
         </h1>
         <p class="hero-desc">
-          El yazısı OCR karmaşasına son. Özel optik formunuzu saniyeler içinde dinamik olarak üretin, 
-          öğrenci no ve kitapçık kodlarını baloncuklarla okutun, tekli veya tüm sınıfı toplu olarak yapay zeka destekli homography ile değerlendirin.
+          El yazısı OCR karmaşasına son. Okul tarayıcınızdan taranmış PDF ve görselleri doğrudan bırakın, 
+          veya kameradan anında çekin. Öğrenci numaraları ve kitapçık kodları baloncuklarla güvenle çözümlenir.
         </p>
 
         <div class="hero-cta-group">
-          <button class="btn btn-primary btn-lg" onclick="startWizard()">
-            <span>Hemen Başla & Sınav Oluştur</span>
+          <button class="btn btn-primary btn-lg" onclick="navigateTo('auth')">
+            <span>Hemen Başla & Giriş Yap</span>
             <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14m-7-7l7 7-7 7"/></svg>
           </button>
           <button class="btn btn-secondary btn-lg" onclick="openSamplePreviewModal()">
@@ -116,21 +129,21 @@
         <div class="feature-strip">
           <div class="feature-item">
             <div class="feature-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
             </div>
             <div>
-              <h4>Dinamik Form Üreteci</h4>
-              <p>Ders, soru ve 4/5 şık sayısı serbestçe belirlenir.</p>
+              <h4>Yazıcıdan PDF & Görsel Yükleme</h4>
+              <p>Okuldaki fiziksel yazıcı/tarayıcıdan gelen PDF, JPG ve PNG'leri sürükleyip bırakın.</p>
             </div>
           </div>
 
           <div class="feature-item">
             <div class="feature-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 4.24 4.24m5.66 5.66 4.24 4.24m-4.24-9.9 4.24-4.24m-9.9 9.9-4.24 4.24"/></svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
             </div>
             <div>
-              <h4>4 Köşe Homography</h4>
-              <p>Kamera eğik tutulsa bile 4 referans noktasıyla kağıt düzeltilir.</p>
+              <h4>Kameradan Canlı Tarama</h4>
+              <p>Özel 4 köşe homography kılavuzuyla tek tıkla fotoğraf çekip hizalayın.</p>
             </div>
           </div>
 
@@ -140,17 +153,17 @@
             </div>
             <div>
               <h4>Toplu Sınıf Okuma</h4>
-              <p>Tek tek veya 100'lerce kağıdı arka planda SignalR ile kuyrukta işleyin.</p>
+              <p>Tüm sınıfı tek seferde yükleyip SignalR canlı kuyruğunda arka planda işleyin.</p>
             </div>
           </div>
 
           <div class="feature-item">
             <div class="feature-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
             </div>
             <div>
-              <h4>Excel & PDF Export</h4>
-              <p>Sınıf başarı sıralaması ve karne çıktısını anında indirin.</p>
+              <h4>Sade Ayarlar & Yapılandırma</h4>
+              <p>4 veya 5 şık, öğrenci no hane sayısı ve dersleri tek bir ayarlar panelinden yönetin.</p>
             </div>
           </div>
         </div>
@@ -159,229 +172,210 @@
   </section>
 
   <!-- =========================================================================
-       3. SİHİRBAZ (WIZARD) ANA UYGULAMA ALANI
+       3. GİRİŞ & KAYIT OL EKRANI (AUTH SECTION)
        ========================================================================= -->
-  <main id="view-wizard" class="view-section hidden">
-    <div class="container wizard-container">
+  <section id="view-auth" class="view-section hidden">
+    <div class="auth-wrapper">
+      <div class="auth-card">
+        <div class="auth-header">
+          <div class="brand-logo" style="margin: 0 auto 12px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="18" height="18" rx="4" /><circle cx="8.5" cy="8.5" r="1.5" fill="currentColor" /><circle cx="15.5" cy="8.5" r="1.5" fill="currentColor" /></svg>
+          </div>
+          <h2>OptiMatrix Hesabınız</h2>
+          <p class="text-sm text-muted">Devam etmek için lütfen giriş yapın veya ücretsiz hesap oluşturun.</p>
+        </div>
 
-      <!-- Adım 1: DİNAMİK FORM OLUŞTURMA & YAPILANDIRMA -->
-      <section id="wizard-step-1" class="wizard-step active">
-        <div class="step-card">
-          <div class="step-card-header">
-            <div>
-              <span class="step-tag">Adım 1 / 4</span>
-              <h2 class="step-heading">Dinamik Optik Form Yapılandırma</h2>
-              <p class="step-desc">Sınav parametrelerini belirleyin; sistem optik form şablonunu ve baloncuk gridlerini otomatik oluştursun.</p>
-            </div>
-            <button class="btn btn-secondary btn-sm" onclick="openLiveFormPreviewModal()">
-              <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
-              Optik Formu Önizle & Yazdır
+        <!-- Auth Tabs -->
+        <div class="auth-tabs">
+          <button type="button" class="auth-tab-btn active" id="tab-btn-login" onclick="switchAuthTab('login')">Giriş Yap</button>
+          <button type="button" class="auth-tab-btn" id="tab-btn-register" onclick="switchAuthTab('register')">Kayıt Ol</button>
+          <button type="button" class="auth-tab-btn" id="tab-btn-forgot" onclick="switchAuthTab('forgot')">Şifremi Unuttum</button>
+        </div>
+
+        <!-- Form 1: Giriş Yap -->
+        <form id="form-login" class="auth-form" onsubmit="handleLoginSubmit(event)">
+          <div class="form-control-group">
+            <label for="login-email">E-Posta Adresi</label>
+            <input type="email" id="login-email" class="form-input" value="hoca@universite.edu.tr" required>
+          </div>
+          <div class="form-control-group">
+            <label for="login-password">Şifre</label>
+            <input type="password" id="login-password" class="form-input" value="123456" required>
+          </div>
+          <div class="form-meta-row">
+            <label class="remember-label">
+              <input type="checkbox" checked> Beni Hatırla
+            </label>
+            <a href="javascript:void(0)" onclick="switchAuthTab('forgot')" class="auth-link">Şifremi unuttum</a>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block btn-lg">
+            <span>Giriş Yap</span>
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14m-7-7l7 7-7 7"/></svg>
+          </button>
+          <div class="demo-credential-tip">
+            💡 <strong>Hızlı Deneme:</strong> Form otomatik doldurulmuştur, doğrudan <em>Giriş Yap</em> butonuna tıklayabilirsiniz.
+          </div>
+        </form>
+
+        <!-- Form 2: Kayıt Ol -->
+        <form id="form-register" class="auth-form hidden" onsubmit="handleRegisterSubmit(event)">
+          <div class="form-control-group">
+            <label for="reg-name">Adınız Soyadınız</label>
+            <input type="text" id="reg-name" class="form-input" placeholder="Örn: Doç. Dr. Ahmet Yılmaz" required>
+          </div>
+          <div class="form-control-group">
+            <label for="reg-email">Kurumsal E-Posta</label>
+            <input type="email" id="reg-email" class="form-input" placeholder="ahmet@universite.edu.tr" required>
+          </div>
+          <div class="form-control-group">
+            <label for="reg-password">Şifre</label>
+            <input type="password" id="reg-password" class="form-input" placeholder="En az 6 karakter" required>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block btn-lg">
+            <span>Hesap Oluştur ve Giriş Yap</span>
+          </button>
+        </form>
+
+        <!-- Form 3: Şifremi Unuttum -->
+        <form id="form-forgot" class="auth-form hidden" onsubmit="handleForgotSubmit(event)">
+          <div class="form-control-group">
+            <label for="forgot-email">Kayıtlı E-Posta Adresiniz</label>
+            <input type="email" id="forgot-email" class="form-input" placeholder="adiniz@universite.edu.tr" required>
+          </div>
+          <button type="submit" class="btn btn-secondary btn-block">
+            <span>Sıfırlama Bağlantısı Gönder</span>
+          </button>
+        </form>
+
+        <div class="auth-card-footer">
+          <button class="btn btn-outline btn-sm" onclick="navigateTo('landing')">
+            ← Tanıtım Sayfasına Dön
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========================================================================
+       4. UYGULAMA İÇİ ANA ALAN (AUTHENTICATED APP DASHBOARD)
+       ========================================================================= -->
+  <main id="view-app" class="view-section hidden">
+    <div class="container app-content-container">
+
+      <!-- =====================================================================
+           SEKME 1: GENEL BAKIŞ / UYGULAMA İÇİ ANA SAYFA (DASHBOARD)
+           ===================================================================== -->
+      <section id="app-tab-dashboard" class="app-tab-panel active">
+        <!-- Karşılama Banner'ı -->
+        <div class="dashboard-welcome-banner">
+          <div class="welcome-text">
+            <span class="badge badge-accent">Sistem Hazır & Çevrim İçi</span>
+            <h2 id="welcome-user-title">Hoş Geldiniz, Öğretmenim 👋</h2>
+            <p class="text-secondary" id="welcome-exam-summary">
+              Aktif Sınav: <strong>Matematik 1. Ara Sınav</strong> (20 Soru, 5 Şıklı - 100 Puan)
+            </p>
+          </div>
+          <div class="welcome-actions">
+            <button class="btn btn-primary" onclick="switchAppTab('scan')">
+              <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              <span>Kağıt Yükle / Tara</span>
+            </button>
+            <button class="btn btn-secondary" onclick="switchAppTab('settings')">
+              <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+              <span>Sınav & Form Ayarları</span>
             </button>
           </div>
+        </div>
 
-          <!-- Temel Sınav Bilgileri -->
-          <div class="form-grid-3">
-            <div class="form-control-group">
-              <label for="cfg-exam-title">Sınav / Ders Başlığı</label>
-              <input type="text" id="cfg-exam-title" class="form-input" placeholder="Örn: 2026 Matematik Vize Sınavı" value="Matematik 1. Ara Sınav">
+        <!-- Sade Hızlı İşlem Kartları Izgarası -->
+        <div class="dash-cards-grid">
+          <div class="dash-card action-card" onclick="switchAppTab('scan')">
+            <div class="dash-card-icon primary">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
             </div>
-
-            <div class="form-control-group">
-              <label for="cfg-institution">Kurum / Okul Adı</label>
-              <input type="text" id="cfg-institution" class="form-input" placeholder="Örn: Mühendislik Fakültesi" value="Mühendislik Fakültesi">
-            </div>
-
-            <div class="form-control-group">
-              <label for="cfg-total-score">Toplam Sınav Puanı</label>
-              <input type="number" id="cfg-total-score" class="form-input" min="10" max="1000" value="100">
+            <div class="dash-card-content">
+              <h3>Optik Kağıt Tara & Oku</h3>
+              <p>Okul tarayıcısından çıkan PDF/resimleri yükleyin veya kameradan fotoğraf çekin.</p>
+              <span class="card-link-text">Kağıt Yüklemeye Git →</span>
             </div>
           </div>
 
-          <!-- Optik Alan Seçenekleri & Baloncuk Yapılandırması -->
-          <div class="section-divider"></div>
-          <h3 class="sub-heading">Optik Kodlama Alanları (Öğrenci Bilgileri)</h3>
-          <p class="sub-desc">Form üzerinde öğrencilerin kodlayacağı alanları ve basamak sayılarını özelleştirin.</p>
-
-          <div class="toggle-cards-grid">
-            <!-- Kitapçık Türü Toggle -->
-            <div class="toggle-card">
-              <div class="toggle-card-info">
-                <strong>Kitapçık Türü Kodlaması</strong>
-                <span>Formda A, B, C, D kitapçık seçimi alanı açılsın</span>
-              </div>
-              <label class="switch">
-                <input type="checkbox" id="cfg-has-booklet" checked onchange="saveWizardState()">
-                <span class="slider"></span>
-              </label>
+          <div class="dash-card action-card" onclick="openLiveFormPreviewModal()">
+            <div class="dash-card-icon accent">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
             </div>
-
-            <!-- Öğrenci No Toggle & Hane Sayısı -->
-            <div class="toggle-card">
-              <div class="toggle-card-info">
-                <strong>Öğrenci Numarası (Bubble Grid)</strong>
-                <span>0-9 baloncuklu numara kodlama sütunları</span>
-              </div>
-              <label class="switch">
-                <input type="checkbox" id="cfg-has-studentid" checked onchange="toggleStudentIdConfig()">
-                <span class="slider"></span>
-              </label>
-            </div>
-
-            <!-- Ad Soyad Harf Kodlama Toggle -->
-            <div class="toggle-card">
-              <div class="toggle-card-info">
-                <strong>Ad Soyad Optik Kodlama</strong>
-                <span>A-Z harf matrisi ile isim alanı</span>
-              </div>
-              <label class="switch">
-                <input type="checkbox" id="cfg-has-namebubbles" checked onchange="saveWizardState()">
-                <span class="slider"></span>
-              </label>
+            <div class="dash-card-content">
+              <h3>Optik Form Oluştur & Yazdır</h3>
+              <p>Belirlediğiniz soru ve derslere uygun A4 optik şablonunu anında PDF olarak yazdırın.</p>
+              <span class="card-link-text">A4 Şablonu İncele →</span>
             </div>
           </div>
 
-          <!-- Öğrenci No Hane Ayarı (Dinamik) -->
-          <div id="studentid-config-box" class="config-callout">
-            <div class="form-control-group" style="max-width: 320px;">
-              <label for="cfg-studentid-digits">Öğrenci No Hane Sayısı (Basamak)</label>
-              <div class="input-with-action">
-                <input type="number" id="cfg-studentid-digits" class="form-input" min="4" max="12" value="8" onchange="saveWizardState()">
-                <span class="input-suffix">Basamak (Örn: 8 sütun)</span>
-              </div>
-              <span class="help-text">Optik formda 0-9 rakamlarını içeren sütun sayısını belirler.</span>
+          <div class="dash-card action-card" onclick="switchAppTab('results')">
+            <div class="dash-card-icon success">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+            </div>
+            <div class="dash-card-content">
+              <h3>Sonuçlar & Sıralama</h3>
+              <p>Değerlendirilmiş sınav karnesini, sınıf sıralamasını ve Excel (.csv) raporunu alın.</p>
+              <span class="card-link-text">Raporları Görüntüle →</span>
             </div>
           </div>
 
-          <!-- Soru ve Şık Parametreleri -->
-          <div class="section-divider"></div>
-          <div class="flex-between">
-            <div>
-              <h3 class="sub-heading">Dersler & Soru Dağılımı</h3>
-              <p class="sub-desc">Birden fazla ders veya tek bir test ekleyebilirsiniz. Her ders için soru sayısını belirleyin.</p>
+          <div class="dash-card action-card" onclick="switchAppTab('settings')">
+            <div class="dash-card-icon warning">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
             </div>
-            <button class="btn btn-outline btn-sm" onclick="addNewCourseRow()">
-              <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-              Ders / Bölüm Ekle
-            </button>
-          </div>
-
-          <!-- Dinamik Ders Listesi Tablosu -->
-          <div class="course-list-wrapper">
-            <div class="course-list-header">
-              <div class="col-name">Ders / Bölüm Adı</div>
-              <div class="col-count">Soru Sayısı</div>
-              <div class="col-range">Soru Aralığı</div>
-              <div class="col-actions">İşlem</div>
-            </div>
-            <div id="course-rows-container" class="course-rows-container">
-              <!-- JS dinamik dolduracak -->
+            <div class="dash-card-content">
+              <h3>Sınav Ayarları & Cevaplar</h3>
+              <p>Ders ekleyin, 4 veya 5 şık seçin, öğrenci no basamaklarını ve doğru cevapları ayarlayın.</p>
+              <span class="card-link-text">Ayarları Düzenle →</span>
             </div>
           </div>
+        </div>
 
-          <!-- Şık ve Yanlış Kuralı Ayarları -->
-          <div class="form-grid-3 mt-4">
-            <div class="form-control-group">
-              <label for="cfg-option-count">Şık Sayısı (Options)</label>
-              <select id="cfg-option-count" class="form-select" onchange="onOptionCountChange()">
-                <option value="4">4 Şık (A, B, C, D)</option>
-                <option value="5" selected>5 Şık (A, B, C, D, E)</option>
-              </select>
-              <span class="help-text">Bazı testler için 4 şıklı optik format uygundur.</span>
-            </div>
-
-            <div class="form-control-group">
-              <label for="cfg-penalty-ratio">Yanlış Götürme Kuralı</label>
-              <select id="cfg-penalty-ratio" class="form-select" onchange="saveWizardState()">
-                <option value="0">Net Düşme Yok (1 Doğru = Tam Puan)</option>
-                <option value="3">3 Yanlış 1 Doğruyu Götürür</option>
-                <option value="4" selected>4 Yanlış 1 Doğruyu Götürür</option>
-              </select>
-            </div>
-
-            <div class="form-control-group">
-              <label>Hesaplanan Toplam Soru</label>
-              <div class="computed-pill">
-                <span id="cfg-total-questions-display">20 Soru</span>
-                <small id="cfg-points-per-q-display">(Soru başı: 5.00 Puan)</small>
-              </div>
-            </div>
+        <!-- Bilgi Şeridi -->
+        <div class="quick-info-strip">
+          <div class="info-block">
+            <span class="label">Ders / Bölüm</span>
+            <strong id="dash-course-count">1 Ders</strong>
           </div>
-
-          <!-- Adım Kontrol Butonları -->
-          <div class="wizard-footer">
-            <div>
-              <span class="text-muted text-sm">💡 Ayarlar tarayıcınızda otomatik kaydedilir (Refresh koruması).</span>
-            </div>
-            <div class="footer-actions">
-              <button class="btn btn-secondary" onclick="goHome()">İptal / Çıkış</button>
-              <button class="btn btn-primary" onclick="proceedToStep(2)">
-                <span>Cevap Anahtarına Geç</span>
-                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14m-7-7l7 7-7 7"/></svg>
-              </button>
-            </div>
+          <div class="info-divider"></div>
+          <div class="info-block">
+            <span class="label">Toplam Soru</span>
+            <strong id="dash-question-count">20 Soru</strong>
+          </div>
+          <div class="info-divider"></div>
+          <div class="info-block">
+            <span class="label">Şık Formatı</span>
+            <strong id="dash-option-count">5 Şık (A, B, C, D, E)</strong>
+          </div>
+          <div class="info-divider"></div>
+          <div class="info-block">
+            <span class="label">Öğrenci No</span>
+            <strong id="dash-studentid-digits">8 Basamak</strong>
           </div>
         </div>
       </section>
 
-      <!-- Adım 2: CEVAP ANAHTARI BELİRLEME -->
-      <section id="wizard-step-2" class="wizard-step hidden">
-        <div class="step-card">
-          <div class="step-card-header">
+      <!-- =====================================================================
+           SEKME 2: KAĞIT YÜKLEME & TARAMA (SCAN TAB)
+           ===================================================================== -->
+      <section id="app-tab-scan" class="app-tab-panel hidden">
+        <div class="tab-card">
+          <div class="tab-card-header">
             <div>
-              <span class="step-tag">Adım 2 / 4</span>
-              <h2 class="step-heading">Cevap Anahtarı Belirleme</h2>
-              <p class="step-desc" id="step-2-summary-desc">Yapılandırdığınız dersler ve sorular için doğru seçenekleri işaretleyin.</p>
-            </div>
-            <div class="btn-group">
-              <button class="btn btn-secondary btn-sm" onclick="randomizeAnswerKey()">Rastgele Doldur</button>
-              <button class="btn btn-secondary btn-sm" onclick="clearAnswerKey()">Temizle</button>
-              <button class="btn btn-outline btn-sm" onclick="triggerScannedKeyUpload()">
-                <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                Öğretmen Kağıdından Yükle
-              </button>
-              <input type="file" id="scanned-key-file-input" accept="image/*" class="hidden" onchange="handleScannedKeyFile(event)">
-            </div>
-          </div>
-
-          <!-- Dinamik Baloncuk Izgarası -->
-          <div class="answer-matrix-container" id="answer-matrix-container">
-            <!-- JS derslere ve soru sayılarına göre dinamik bloklar basar -->
-          </div>
-
-          <!-- Adım Kontrol Butonları -->
-          <div class="wizard-footer">
-            <button class="btn btn-secondary" onclick="proceedToStep(1)">
-              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5m7 7l-7-7 7-7"/></svg>
-              <span>Geri: Form Yapılandırma</span>
-            </button>
-            <div class="footer-actions">
-              <span id="answered-counter-pill" class="info-pill">0 / 20 Soru İşaretlendi</span>
-              <button class="btn btn-primary" onclick="proceedToStep(3)">
-                <span>Kağıt Yüklemeye Geç</span>
-                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14m-7-7l7 7-7 7"/></svg>
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- Adım 3: KAĞIT YÜKLEME VE TARAMA (TEK / TOPLU / KAMERA) -->
-      <section id="wizard-step-3" class="wizard-step hidden">
-        <div class="step-card">
-          <div class="step-card-header">
-            <div>
-              <span class="step-tag">Adım 3 / 4</span>
-              <h2 class="step-heading">Optik Kağıt Tarama & Yükleme</h2>
-              <p class="step-desc">Tek bir kağıdı kameradan çekebilir veya sınıfın tüm taranmış kağıtlarını toplu yükleyebilirsiniz.</p>
+              <h2 class="tab-title">Optik Kağıt Tarama & Yükleme</h2>
+              <p class="tab-subtitle">Okul yazıcısından taranan PDF / görselleri yükleyebilir veya tarayıcı kamerasından anında çekebilirsiniz.</p>
             </div>
             <!-- Tekli / Toplu Mod Anahtarı -->
             <div class="segmented-control">
               <button class="segment-btn active" id="seg-single" onclick="setScanMode('single')">Tek Kağıt Girişi</button>
-              <button class="segment-btn" id="seg-bulk" onclick="setScanMode('bulk')">Toplu Kağıt Girişi (Sınıf)</button>
+              <button class="segment-btn" id="seg-bulk" onclick="setScanMode('bulk')">Toplu Kağıt (Sınıf)</button>
             </div>
           </div>
 
-          <!-- SignalR Canlı İlerleme Çubuğu (Toplu Okumada Aktif Olur) -->
+          <!-- SignalR Canlı İlerleme Çubuğu -->
           <div id="signalr-progress-box" class="progress-box hidden">
             <div class="flex-between mb-2">
               <span class="progress-title" id="progress-msg">⏳ Kağıtlar işleniyor (Hangfire Kuyruğu)...</span>
@@ -393,60 +387,40 @@
           </div>
 
           <div class="scan-grid-layout">
-            <!-- Sol: Yükleme Yöntemi (Dosya / Kamera) -->
+            <!-- Sol: Yükleme Yöntemi -->
             <div class="scan-column">
-              <div class="sub-tabs">
-                <button class="sub-tab-btn active" id="subtab-file" onclick="switchScanInputMethod('file')">Dosya Yükle / Sürükle</button>
-                <button class="sub-tab-btn" id="subtab-camera" onclick="switchScanInputMethod('camera')">Webcam ile Canlı Çek</button>
-              </div>
-
-              <!-- Dosya Yükleme Kutusu -->
-              <div id="scan-file-panel" class="scan-method-panel active">
-                <div class="drop-zone" id="file-drop-zone" onclick="document.getElementById('omr-file-input').click()">
-                  <input type="file" id="omr-file-input" accept="image/*" class="hidden" onchange="handleFileInputChange(event)">
-                  <div class="drop-zone-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                  </div>
-                  <h4 id="drop-zone-title">Optik Form Görselini Seçin veya Sürükleyin</h4>
-                  <p id="drop-zone-subtitle">JPG, PNG veya WEBP formatında taranmış formlar desteklenir</p>
-                  <button type="button" class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); document.getElementById('omr-file-input').click()">Dosya Seç</button>
+              <!-- Dosya / Fiziksel Tarayıcı Drop Zone -->
+              <div class="drop-zone" id="file-drop-zone" onclick="document.getElementById('omr-file-input').click()">
+                <input type="file" id="omr-file-input" accept="image/*,application/pdf" class="hidden" onchange="handleFileInputChange(event)">
+                <div class="drop-zone-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                 </div>
-              </div>
-
-              <!-- Kamera Çekim Kutusu -->
-              <div id="scan-camera-panel" class="scan-method-panel hidden">
-                <div class="camera-wrapper">
-                  <video id="webcam-video" autoplay playsinline muted></video>
-                  <!-- 4 Köşe Homography Hizalama Kılavuzu -->
-                  <div class="camera-homography-overlay">
-                    <div class="corner-target top-left"></div>
-                    <div class="corner-target top-right"></div>
-                    <div class="corner-target bottom-left"></div>
-                    <div class="corner-target bottom-right"></div>
-                    <div class="laser-scanner-line"></div>
-                    <div class="overlay-badge">4 Siyah Köşe İşaretini Çerçeveye Hizalayın</div>
-                  </div>
-                </div>
-                <div class="camera-controls">
-                  <button class="btn btn-secondary btn-sm" onclick="startWebcam()">Kamerayı Başlat</button>
-                  <button class="btn btn-primary btn-sm" onclick="captureWebcamFrame()">Fotoğraf Çek</button>
-                  <button class="btn btn-outline btn-sm" onclick="stopWebcam()">Kapat</button>
+                <h4 id="drop-zone-title">Okul Yazıcısından Çıkan PDF, JPG veya PNG Formları Bırakın</h4>
+                <p id="drop-zone-subtitle">Taranmış optik formları sürükleyip bırakabilir veya bilgisayarınızdan seçebilirsiniz.</p>
+                
+                <div class="drop-zone-buttons" onclick="event.stopPropagation()">
+                  <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('omr-file-input').click()">
+                    📁 Dosya / PDF Seç
+                  </button>
+                  <button type="button" class="btn btn-primary btn-sm" onclick="openCameraModal()">
+                    📸 Kameradan Çek / Tara
+                  </button>
                 </div>
               </div>
             </div>
 
-            <!-- Sağ: Önizleme veya Toplu Kuyruk Listesi -->
+            <!-- Sağ: Önizleme / Kuyruk Paneli -->
             <div class="scan-column">
               <div class="preview-panel-header">
                 <h4 id="preview-title">Yükleme Önizlemesi</h4>
                 <span id="preview-badge" class="badge badge-neutral">Hazır Değil</span>
               </div>
 
-              <!-- Tekli Kağıt Görsel Önizlemesi -->
+              <!-- Tekli Kağıt Önizlemesi -->
               <div id="single-preview-wrapper" class="preview-card-box">
                 <div id="preview-empty-state" class="empty-state">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                  <p>Henüz bir optik kağıt seçilmedi</p>
+                  <p>Henüz bir optik kağıt yüklenmedi</p>
                   <button class="btn btn-outline btn-sm" onclick="loadSyntheticSampleForm()">Örnek Sınav Kağıdı Yükle</button>
                 </div>
                 <img id="single-preview-img" src="" alt="Önizleme" class="hidden">
@@ -455,11 +429,11 @@
               <!-- Toplu Kağıt Kuyruk Listesi -->
               <div id="bulk-queue-wrapper" class="bulk-queue-card hidden">
                 <div class="bulk-queue-header">
-                  <span>Kuyruktaki Kağıtlar</span>
+                  <span>Kuyruktaki Kağıtlar (PDF / Görsel)</span>
                   <span id="bulk-file-count-badge" class="badge badge-accent">0 Dosya</span>
                 </div>
                 <div id="bulk-file-items-list" class="bulk-items-list">
-                  <!-- JS doldurur -->
+                  <!-- JS dinamik doldurur -->
                 </div>
               </div>
 
@@ -470,7 +444,7 @@
                     <input type="checkbox" id="backend-toggle" onchange="toggleBackendConfig()">
                     <span class="slider-small"></span>
                   </label>
-                  <span class="text-xs text-muted">Canlı C# .NET 10 API Kullan (Kapalıysa Yerel Simülasyon Çalışır)</span>
+                  <span class="text-xs text-muted">Canlı C# .NET API Kullan (Kapalıysa Yerel OpenCV Simülasyonu Çalışır)</span>
                 </div>
                 <button id="run-evaluation-btn" class="btn btn-primary btn-block btn-lg" onclick="executeEvaluation()" disabled>
                   <span id="eval-btn-label">Optik Formu Değerlendir</span>
@@ -479,28 +453,18 @@
               </div>
             </div>
           </div>
-
-          <!-- Adım Kontrol Butonları -->
-          <div class="wizard-footer">
-            <button class="btn btn-secondary" onclick="proceedToStep(2)">
-              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5m7 7l-7-7 7-7"/></svg>
-              <span>Geri: Cevap Anahtarı</span>
-            </button>
-            <div class="footer-actions">
-              <span class="text-xs text-muted">Değerlendirme tamamlandığında sonuç adımı otomatik açılacaktır.</span>
-            </div>
-          </div>
         </div>
       </section>
 
-      <!-- Adım 4: SONUÇLAR, KARNE & ANALİZ RAPORU -->
-      <section id="wizard-step-4" class="wizard-step hidden">
-        <div class="step-card">
-          <div class="step-card-header no-print">
+      <!-- =====================================================================
+           SEKME 3: SONUÇLAR, KARNE & ANALİZ RAPORU (RESULTS TAB)
+           ===================================================================== -->
+      <section id="app-tab-results" class="app-tab-panel hidden">
+        <div class="tab-card">
+          <div class="tab-card-header no-print">
             <div>
-              <span class="step-tag">Adım 4 / 4</span>
-              <h2 class="step-heading">Sınav Değerlendirme & Analiz Karnesi</h2>
-              <p class="step-desc" id="results-exam-title-display">OptiMatrix OMR Değerlendirme Motoru Çıktısı</p>
+              <h2 class="tab-title">Sınav Değerlendirme & Analiz Karnesi</h2>
+              <p class="tab-subtitle" id="results-exam-title-display">OptiMatrix OMR Değerlendirme Çıktısı</p>
             </div>
             <div class="btn-group">
               <button class="btn btn-secondary btn-sm" onclick="exportExcelCsv()">
@@ -548,7 +512,7 @@
             </div>
           </div>
 
-          <!-- Toplu Sınıf Sıralama Tablosu (Toplu okumada aktif) -->
+          <!-- Toplu Sınıf Sıralama Tablosu -->
           <div id="bulk-ranking-section" class="bulk-ranking-container hidden">
             <div class="flex-between mb-3">
               <h3 class="sub-heading">📊 Sınıf Sıralaması & Toplu Sonuçlar</h3>
@@ -559,7 +523,7 @@
                 <thead>
                   <tr>
                     <th>Sıra</th>
-                    <th>Öğrenci No (Bubble)</th>
+                    <th>Öğrenci No</th>
                     <th>Öğrenci Adı</th>
                     <th>Kitapçık</th>
                     <th>Doğru</th>
@@ -577,9 +541,8 @@
             </div>
           </div>
 
-          <!-- İki Sütunlu Detay: Sol Görsel Analizi, Sağ Soru Soru Tablo -->
+          <!-- İki Sütun: Canvas Analizi & Soru Tablosu -->
           <div class="results-columns-grid">
-            <!-- Sol: Homography & Baloncuk Çizimi -->
             <div class="column-card">
               <div class="card-title-bar">
                 <h4>OpenCV Perspektif & Baloncuk Analizi</h4>
@@ -595,7 +558,6 @@
               </div>
             </div>
 
-            <!-- Sağ: Soru Soru Detay Tablosu -->
             <div class="column-card">
               <div class="card-title-bar">
                 <h4 id="student-specific-title">Öğrenci Soru Dağılımı</h4>
@@ -620,19 +582,182 @@
               </div>
             </div>
           </div>
+        </div>
+      </section>
 
-          <!-- Adım Kontrol Butonları -->
-          <div class="wizard-footer no-print">
-            <button class="btn btn-secondary" onclick="proceedToStep(3)">
-              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5m7 7l-7-7 7-7"/></svg>
-              <span>Geri: Kağıt Yükleme</span>
-            </button>
-            <div class="footer-actions">
-              <button class="btn btn-outline" onclick="confirmResetSession()">
-                <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
-                Yeni Sınav Başlat
+      <!-- =====================================================================
+           SEKME 4: SADE AYARLAR & FORM / CEVAP ANAHTARI YAPILANDIRMASI (SETTINGS TAB)
+           ===================================================================== -->
+      <section id="app-tab-settings" class="app-tab-panel hidden">
+        <div class="tab-card">
+          <div class="tab-card-header">
+            <div>
+              <h2 class="tab-title">Sınav Yapılandırması & Optik Ayarlar</h2>
+              <p class="tab-subtitle">Dersleri, şık sayısını, basamakları ve cevap anahtarını buradan yönetebilirsiniz.</p>
+            </div>
+            <div class="btn-group">
+              <button class="btn btn-secondary btn-sm" onclick="openLiveFormPreviewModal()">
+                <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                A4 Formu Önizle
+              </button>
+              <button class="btn btn-primary btn-sm" onclick="saveSettingsFromDOM(true)">
+                Değişiklikleri Kaydet
               </button>
             </div>
+          </div>
+
+          <!-- 1. Temel Sınav Bilgileri -->
+          <div class="settings-group-card">
+            <h3 class="sub-heading">Temel Sınav Parametreleri</h3>
+            <div class="form-grid-3">
+              <div class="form-control-group">
+                <label for="cfg-exam-title">Sınav / Ders Başlığı</label>
+                <input type="text" id="cfg-exam-title" class="form-input" value="Matematik 1. Ara Sınav" onchange="saveSettingsFromDOM()">
+              </div>
+              <div class="form-control-group">
+                <label for="cfg-institution">Kurum / Okul Adı</label>
+                <input type="text" id="cfg-institution" class="form-input" value="Mühendislik Fakültesi" onchange="saveSettingsFromDOM()">
+              </div>
+              <div class="form-control-group">
+                <label for="cfg-total-score">Toplam Puan</label>
+                <input type="number" id="cfg-total-score" class="form-input" min="10" max="1000" value="100" onchange="saveSettingsFromDOM()">
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. Şık Sayısı & Kurallar -->
+          <div class="settings-group-card mt-4">
+            <h3 class="sub-heading">Şık ve Değerlendirme Kuralları</h3>
+            <div class="form-grid-3">
+              <div class="form-control-group">
+                <label for="cfg-option-count">Şık Sayısı (Options)</label>
+                <select id="cfg-option-count" class="form-select" onchange="onOptionCountChange()">
+                  <option value="4">4 Şık (A, B, C, D)</option>
+                  <option value="5" selected>5 Şık (A, B, C, D, E)</option>
+                </select>
+                <span class="help-text">Bazı testler için 4 şıklı optik format uygundur.</span>
+              </div>
+              <div class="form-control-group">
+                <label for="cfg-penalty-ratio">Yanlış Götürme Kuralı</label>
+                <select id="cfg-penalty-ratio" class="form-select" onchange="saveSettingsFromDOM()">
+                  <option value="0">Net Düşme Yok (1 Doğru = Tam Puan)</option>
+                  <option value="3">3 Yanlış 1 Doğruyu Götürür</option>
+                  <option value="4" selected>4 Yanlış 1 Doğruyu Götürür</option>
+                </select>
+              </div>
+              <div class="form-control-group">
+                <label>Hesaplanan Soru Puanı</label>
+                <div class="computed-pill">
+                  <span id="cfg-total-questions-display">20 Soru</span>
+                  <small id="cfg-points-per-q-display">(Soru başı: 5.00 Puan)</small>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 3. Optik Kodlama Alanları (Öğrenci No Hane vb.) -->
+          <div class="settings-group-card mt-4">
+            <h3 class="sub-heading">Optik Kodlama Alanları (Öğrenci Bilgileri)</h3>
+            <p class="sub-desc">Form üzerinde öğrencilerin kodlayacağı alanları ve basamak sayılarını belirleyin.</p>
+            <div class="toggle-cards-grid">
+              <div class="toggle-card">
+                <div class="toggle-card-info">
+                  <strong>Kitapçık Türü Kodlaması</strong>
+                  <span>Formda A, B, C, D kitapçık seçimi baloncukları</span>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" id="cfg-has-booklet" checked onchange="saveSettingsFromDOM()">
+                  <span class="slider"></span>
+                </label>
+              </div>
+              <div class="toggle-card">
+                <div class="toggle-card-info">
+                  <strong>Öğrenci Numarası (Bubble Grid)</strong>
+                  <span>0-9 baloncuklu numara kodlama sütunları</span>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" id="cfg-has-studentid" checked onchange="toggleStudentIdConfig()">
+                  <span class="slider"></span>
+                </label>
+              </div>
+              <div class="toggle-card">
+                <div class="toggle-card-info">
+                  <strong>Ad Soyad Optik Kodlama</strong>
+                  <span>Harf kodlaması ve isim alanı</span>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" id="cfg-has-namebubbles" checked onchange="saveSettingsFromDOM()">
+                  <span class="slider"></span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Öğrenci No Hane Ayarı -->
+            <div id="studentid-config-box" class="config-callout">
+              <div class="form-control-group" style="max-width: 320px;">
+                <label for="cfg-studentid-digits">Öğrenci No Hane Sayısı (Basamak)</label>
+                <div class="input-with-action">
+                  <input type="number" id="cfg-studentid-digits" class="form-input" min="4" max="12" value="8" onchange="saveSettingsFromDOM()">
+                  <span class="input-suffix">Basamak (Örn: 8 sütun)</span>
+                </div>
+                <span class="help-text">Optik formda 0-9 rakamlarını içeren sütun sayısını belirler.</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 4. Dersler & Soru Dağılımı Tablosu -->
+          <div class="settings-group-card mt-4">
+            <div class="flex-between">
+              <div>
+                <h3 class="sub-heading">Dersler & Soru Dağılımı</h3>
+                <p class="sub-desc">Birden fazla ders veya tek bir test ekleyebilirsiniz.</p>
+              </div>
+              <button class="btn btn-outline btn-sm" onclick="addNewCourseRow()">
+                <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+                + Ders / Bölüm Ekle
+              </button>
+            </div>
+
+            <div class="course-list-wrapper">
+              <div class="course-list-header">
+                <div class="col-name">Ders / Bölüm Adı</div>
+                <div class="col-count">Soru Sayısı</div>
+                <div class="col-range">Soru Aralığı</div>
+                <div class="col-actions">İşlem</div>
+              </div>
+              <div id="course-rows-container" class="course-rows-container">
+                <!-- JS doldurur -->
+              </div>
+            </div>
+          </div>
+
+          <!-- 5. Cevap Anahtarı Matrisi -->
+          <div class="settings-group-card mt-4">
+            <div class="flex-between mb-2">
+              <div>
+                <h3 class="sub-heading">Cevap Anahtarı Belirleme</h3>
+                <p class="sub-desc">Belirlenen sorular için doğru seçenekleri işaretleyin.</p>
+              </div>
+              <div class="btn-group">
+                <button class="btn btn-secondary btn-sm" onclick="randomizeAnswerKey()">Rastgele Doldur</button>
+                <button class="btn btn-secondary btn-sm" onclick="clearAnswerKey()">Temizle</button>
+                <button class="btn btn-outline btn-sm" onclick="triggerScannedKeyUpload()">
+                  <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                  Öğretmen Kağıdından Çıkar
+                </button>
+                <input type="file" id="scanned-key-file-input" accept="image/*" class="hidden" onchange="handleScannedKeyFile(event)">
+              </div>
+            </div>
+
+            <div class="answer-matrix-container" id="answer-matrix-container">
+              <!-- JS derslere ve soru sayılarına göre dinamik bloklar basar -->
+            </div>
+          </div>
+
+          <div class="settings-footer mt-4">
+            <button class="btn btn-primary" onclick="saveSettingsFromDOM(true)">
+              Tüm Ayarları Kaydet
+            </button>
           </div>
         </div>
       </section>
@@ -641,7 +766,41 @@
   </main>
 
   <!-- =========================================================================
-       4. DİNAMİK FORM ÖNİZLEME & YAZDIRMA MODALI (CANVAS LIVE SHEET)
+       5. KAMERA MODAL (TARAYICI KAMERASINDAN ÇEKME)
+       ========================================================================= -->
+  <div id="camera-modal" class="modal-backdrop hidden">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div>
+          <h3>Optik Form Kamerası</h3>
+          <p class="text-xs text-muted">Kağıdın 4 siyah köşesini kılavuza hizalayın ve 'Fotoğraf Çek'e basın.</p>
+        </div>
+        <button class="modal-close-btn" onclick="closeCameraModal()">&times;</button>
+      </div>
+      <div class="modal-body" style="padding: 16px;">
+        <div class="camera-wrapper">
+          <video id="webcam-video" autoplay playsinline muted></video>
+          <div class="camera-homography-overlay">
+            <div class="corner-target top-left"></div>
+            <div class="corner-target top-right"></div>
+            <div class="corner-target bottom-left"></div>
+            <div class="corner-target bottom-right"></div>
+            <div class="laser-scanner-line"></div>
+            <div class="overlay-badge">4 Siyah Köşeyi Çerçeveye Hizalayın</div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeCameraModal()">Vazgeç</button>
+        <button class="btn btn-primary" onclick="captureWebcamFrame()">
+          📸 Fotoğraf Çek & Kağıt Olarak Ekle
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       6. DİNAMİK FORM ÖNİZLEME & YAZDIRMA MODALI (A4 LIVE SHEET)
        ========================================================================= -->
   <div id="sheet-preview-modal" class="modal-backdrop hidden">
     <div class="modal-dialog modal-large">
@@ -654,7 +813,6 @@
       </div>
       <div class="modal-body sheet-modal-body">
         <div class="sheet-paper-container" id="printable-sheet-paper">
-          <!-- Canvas veya dinamik optik kağıt HTML'i -->
           <div id="dynamic-paper-content" class="omr-paper-render"></div>
         </div>
       </div>
