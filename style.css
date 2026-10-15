@@ -1815,15 +1815,21 @@ input:checked + .slider-small:before { transform: translateX(14px); }
 
 .omr-paper-render .omr-corner-marker {
   position: absolute;
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   background-color: #000000;
 }
 
-.omr-corner-marker.tl { top: 10px; left: 10px; }
-.omr-corner-marker.tr { top: 10px; right: 10px; }
-.omr-corner-marker.bl { bottom: 10px; left: 10px; }
-.omr-corner-marker.br { bottom: 10px; right: 10px; }
+/* Sol üst köşe hizalama karesi kağıt yönü tespiti için diğer 3 kareden belirgin şekilde daha büyüktür */
+.omr-corner-marker.tl { 
+  top: 8px; 
+  left: 8px; 
+  width: 24px; 
+  height: 24px; 
+}
+.omr-corner-marker.tr { top: 12px; right: 12px; }
+.omr-corner-marker.bl { bottom: 12px; left: 12px; }
+.omr-corner-marker.br { bottom: 12px; right: 12px; }
 
 .paper-sheet-header {
   text-align: center;
@@ -1835,11 +1841,11 @@ input:checked + .slider-small:before { transform: translateX(14px); }
 .paper-sheet-header h2 { font-size: 1.15rem; font-weight: 800; color: #000000; letter-spacing: 0.02em; }
 .paper-sheet-header h4 { font-size: 0.82rem; color: #374151; margin-top: 2px; font-weight: 700; }
 
-/* ÖSYM Tarzı Sayfa Düzeni (Kullanıcı Talebi: Sol Üst El Yazısı, Orta Kitapçık, Alt Alfabe; Sağ Öğrenci No) */
+/* ÖSYM Tarzı Sayfa Düzeni (Sol: El Yazısı, Kitapçık, 30-Harfli Alfabe; Sağ: Öğrenci No, Yönerge, 11-Haneli T.C.) */
 .a4-top-block-grid {
   display: grid;
-  grid-template-columns: 1.8fr 1.2fr;
-  gap: 12px;
+  grid-template-columns: 1.9fr 1.1fr;
+  gap: 10px;
   margin-bottom: 12px;
 }
 
@@ -1901,12 +1907,13 @@ input:checked + .slider-small:before { transform: translateX(14px); }
   gap: 6px;
 }
 
-/* 3. ALT: ÖSYM Harf Kodlama Alanı (Öğrencinin kodlaması için dikey A..Z) */
+/* 3. ALT: ÖSYM Harf Kodlama Alanı (30 Karakter - Tam Genişlik, Boşluksuz) */
 .osym-coding-box {
   border: 1.5px solid #000000;
   border-radius: 2px;
-  padding: 5px 6px;
+  padding: 4px 6px;
   background-color: #ffffff;
+  box-sizing: border-box;
 }
 
 .osym-coding-title {
@@ -1918,46 +1925,53 @@ input:checked + .slider-small:before { transform: translateX(14px); }
   border-bottom: 1px solid #000000;
   padding-bottom: 2px;
   text-align: center;
+  letter-spacing: 0.02em;
 }
 
+/* 30 Sütunlu Ad Soyad Matrisi - Boşluksuz, Sınırları Tam Dolduran Düzen */
 .osym-alphabet-grid {
-  display: flex;
-  gap: 2.5px;
-  justify-content: center;
-  overflow-x: auto;
+  display: grid;
+  grid-template-columns: repeat(30, 1fr);
+  gap: 1.5px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .osym-char-col {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1.5px;
+  gap: 1.2px;
+  min-width: 0;
 }
 
 .osym-char-box {
-  width: 12px;
-  height: 13px;
+  width: 100%;
+  max-width: 13px;
+  height: 12px;
   border: 1px solid #000000;
-  margin-bottom: 2px;
-  font-size: 0.5rem;
+  margin-bottom: 1.5px;
+  font-size: 0.46rem;
   font-weight: 800;
   text-align: center;
-  line-height: 13px;
+  line-height: 12px;
   background-color: #f8fafc;
+  box-sizing: border-box;
 }
 
 .osym-bubble {
-  width: 10.5px;
-  height: 10.5px;
+  width: 9.5px;
+  height: 9.5px;
   border: 1px solid #000000;
   border-radius: 50%;
-  font-size: 0.42rem;
+  font-size: 0.38rem;
   font-weight: bold;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #000000;
   line-height: 1;
+  background-color: #ffffff;
 }
 
 .osym-bubble.filled {
@@ -1965,36 +1979,63 @@ input:checked + .slider-small:before { transform: translateX(14px); }
   color: #ffffff;
 }
 
-/* Sağ Blok: Öğrenci No & Sınav Yönergesi */
+/* Sağ Blok: Öğrenci No & Sınav Yönergesi & 11 Haneli T.C. Kimlik No */
 .a4-right-block {
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 6px;
 }
 
-.student-id-coding-box {
+.student-id-coding-box,
+.tc-kimlik-coding-box {
   border: 1.5px solid #000000;
   border-radius: 2px;
-  padding: 5px 6px;
+  padding: 4px 6px;
   background-color: #ffffff;
   display: flex;
   flex-direction: column;
   align-items: center;
+  box-sizing: border-box;
+}
+
+.digit-coding-grid {
+  display: flex;
+  justify-content: center;
+  gap: 2.5px;
+  width: 100%;
+  margin: 3px 0;
+}
+
+.digit-coding-grid .osym-char-col {
+  min-width: 0;
+}
+
+.digit-coding-grid .osym-char-box {
+  width: 12.5px;
+  height: 12.5px;
+  font-size: 0.52rem;
+  line-height: 12.5px;
+}
+
+.digit-coding-grid .osym-bubble {
+  width: 10.5px;
+  height: 10.5px;
+  font-size: 0.42rem;
 }
 
 .exam-instructions-box {
   border: 1.5px solid #000000;
   border-radius: 2px;
-  padding: 6px 8px;
+  padding: 5px 7px;
   background-color: #f8fafc;
-  font-size: 0.58rem;
+  font-size: 0.56rem;
   color: #1e293b;
   line-height: 1.35;
 }
 
 .exam-instructions-box strong {
   display: block;
-  font-size: 0.64rem;
+  font-size: 0.62rem;
   margin-bottom: 2px;
   color: #000000;
 }

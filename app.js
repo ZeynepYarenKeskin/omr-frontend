@@ -44,13 +44,12 @@ const defaultState = {
       { id: 2, name: 'Geometri', questionCount: 10 }
     ]
   },
-  activeBooklet: 'A', // 'A' | 'B' | 'C' | 'D' | 'E'
+  activeBooklet: 'A', // 'A' | 'B' | 'C' | 'D'
   bookletAnswerKeys: {
     'A': {},
     'B': {},
     'C': {},
-    'D': {},
-    'E': {}
+    'D': {}
   },
   answerKeys: {}, // Aktif kitapçığın cevap anahtarı haritası
   scanMode: 'single', // 'single' | 'bulk'
@@ -94,7 +93,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function getActiveBookletKeyMap(booklet = state.activeBooklet || 'A') {
   if (!state.bookletAnswerKeys) {
-    state.bookletAnswerKeys = { 'A': {}, 'B': {}, 'C': {}, 'D': {}, 'E': {} };
+    state.bookletAnswerKeys = { 'A': {}, 'B': {}, 'C': {}, 'D': {} };
     if (state.answerKeys && typeof state.answerKeys === 'object') {
       state.bookletAnswerKeys['A'] = Object.assign({}, state.answerKeys);
     }
@@ -113,16 +112,18 @@ function loadPersistedState() {
       state = Object.assign({}, defaultState, parsed);
       state.config = Object.assign({}, defaultState.config, parsed.config || {});
       if (parsed.currentUser) state.currentUser = parsed.currentUser;
-      if (parsed.activeBooklet) state.activeBooklet = parsed.activeBooklet;
+      if (parsed.activeBooklet) {
+        state.activeBooklet = ['A', 'B', 'C', 'D'].includes(parsed.activeBooklet) ? parsed.activeBooklet : 'A';
+      }
       if (parsed.bookletAnswerKeys) {
         state.bookletAnswerKeys = parsed.bookletAnswerKeys;
+        delete state.bookletAnswerKeys['E'];
       } else if (parsed.answerKeys) {
         state.bookletAnswerKeys = {
           'A': Object.assign({}, parsed.answerKeys),
           'B': {},
           'C': {},
-          'D': {},
-          'E': {}
+          'D': {}
         };
       }
       state.answerKeys = getActiveBookletKeyMap();
@@ -762,9 +763,9 @@ function renderLiveSettingsSheet() {
     `;
   });
 
-  // ÖSYM Tarzı Ad Soyad Dikey Harf Kodlama Izgarası (A-Z)
+  // ÖSYM Tarzı Ad Soyad Dikey Harf Kodlama Izgarası (30 Karakter, A-Z)
   const alphabet = ['A', 'B', 'C', 'Ç', 'D', 'E', 'F', 'G', 'H', 'I', 'İ', 'J', 'K', 'L', 'M', 'N', 'O', 'Ö', 'P', 'R', 'S', 'Ş', 'T', 'U', 'Ü', 'V', 'Y', 'Z'];
-  const nameCols = 10; // 10 karakterlik ÖSYM harf kodlama sütunu
+  const nameCols = 30; // 30 karakterlik Ad-Soyad kodlama sütunu
   let osymNameColsHTML = '';
   for (let c = 0; c < nameCols; c++) {
     let bubblesCol = '';
@@ -794,11 +795,26 @@ function renderLiveSettingsSheet() {
     `;
   }
 
+  // 11 Haneli T.C. Kimlik Numarası Kodlama (0-9 basamakları)
+  let tcColsHTML = '';
+  for (let d = 1; d <= 11; d++) {
+    let numBubbles = '';
+    for (let n = 0; n <= 9; n++) {
+      numBubbles += `<div class="osym-bubble">${n}</div>`;
+    }
+    tcColsHTML += `
+      <div class="osym-char-col">
+        <div class="osym-char-box"></div>
+        ${numBubbles}
+      </div>
+    `;
+  }
+
   const actBooklet = state.activeBooklet || 'A';
 
   container.innerHTML = `
     <div class="omr-paper-render" style="--col-count: ${Math.max(courseCount, 3)};">
-      <!-- 4 Köşe Homografi Referans İşaretçileri -->
+      <!-- 4 Köşe Homografi Referans İşaretçileri (Sol Üst Köşe Hizalama İçin Daha Büyük) -->
       <div class="omr-corner-marker tl"></div>
       <div class="omr-corner-marker tr"></div>
       <div class="omr-corner-marker bl"></div>
@@ -813,7 +829,7 @@ function renderLiveSettingsSheet() {
         </div>
       </div>
 
-      <!-- Kullanıcının İstediği Özel A4 Sayfa Düzeni (Sol: El Yazısı -> Kitapçık -> ÖSYM Harf Kodlama; Sağ: Öğrenci No -> Yönerge) -->
+      <!-- Kullanıcının İstediği Özel A4 Sayfa Düzeni (Sol: El Yazısı -> Kitapçık -> 30-Harfli Alfabe; Sağ: Öğrenci No -> Yönerge -> 11 Haneli T.C.) -->
       <div class="a4-top-block-grid">
         <!-- SOL BLOK -->
         <div class="a4-left-block">
@@ -831,7 +847,7 @@ function renderLiveSettingsSheet() {
             </div>
           </div>
 
-          <!-- 2. ORTA: Kitapçık Türü İşaretleme Alanı (A, B, C, D, E) -->
+          <!-- 2. ORTA: Kitapçık Türü İşaretleme Alanı (A, B, C, D) -->
           <div class="booklet-choice-box">
             <label>KİTAPÇIK TÜRÜ:</label>
             <div class="booklet-circles-row">
@@ -839,13 +855,12 @@ function renderLiveSettingsSheet() {
               <div class="paper-circle ${actBooklet === 'B' ? 'active' : ''}">B</div>
               <div class="paper-circle ${actBooklet === 'C' ? 'active' : ''}">C</div>
               <div class="paper-circle ${actBooklet === 'D' ? 'active' : ''}">D</div>
-              <div class="paper-circle ${actBooklet === 'E' ? 'active' : ''}">E</div>
             </div>
           </div>
 
-          <!-- 3. ALT: ÖSYM Harf Kodlama Alanı (Öğrencinin dikey A-Z kodlaması) -->
+          <!-- 3. ALT: ÖSYM Harf Kodlama Alanı (30 Karakter, Dikey A-Z) -->
           <div class="osym-coding-box">
-            <div class="osym-coding-title">AD VE SOYAD KODLAMA ALANI (ÖSYM FORMATI)</div>
+            <div class="osym-coding-title">AD VE SOYAD KODLAMA ALANI (30 KARAKTER - ÖSYM FORMATI)</div>
             <div class="osym-alphabet-grid">
               ${osymNameColsHTML}
             </div>
@@ -854,20 +869,28 @@ function renderLiveSettingsSheet() {
 
         <!-- SAĞ BLOK -->
         <div class="a4-right-block">
-          <!-- Öğrenci No Kodlama (0-9) -->
+          <!-- 1. Öğrenci Numarası Kodlama (0-9) -->
           <div class="student-id-coding-box">
             <div class="osym-coding-title" style="width: 100%;">ÖĞRENCİ NUMARASI (${digits} HANE)</div>
-            <div style="display:flex; justify-content:center; gap:3px; margin: 4px 0;">
+            <div class="digit-coding-grid">
               ${digitColsHTML}
             </div>
           </div>
 
-          <!-- Sınav Yönergesi & Kurallar -->
+          <!-- 2. Sınav Yönergesi & Kurallar Kutusu -->
           <div class="exam-instructions-box">
             <strong>DİKKAT VE SINAV KURALLARI:</strong>
             1. Cevaplarınızı yumuşak kurşun kalemle, kutucuğu taşırmadan doldurunuz.<br>
-            2. Kitapçık türünü kodlamayı kesinlikle unutmayınız.<br>
-            3. Hatalı kodlamaları yumuşak silgiyle iz bırakmadan siliniz.
+            2. Kitapçık türünü ve T.C. Kimlik numaranızı kodlamayı unutmayınız.<br>
+            3. Yanlış cevaplar doğru cevapları götürmez (Ham puan esası).
+          </div>
+
+          <!-- 3. T.C. Kimlik Numarası Kodlama (11 HANE - DİKKAT KISMININ HEMEN ALTINDA) -->
+          <div class="tc-kimlik-coding-box">
+            <div class="osym-coding-title" style="width: 100%;">T.C. KİMLİK NUMARASI (11 HANE)</div>
+            <div class="digit-coding-grid">
+              ${tcColsHTML}
+            </div>
           </div>
         </div>
       </div>
@@ -889,12 +912,12 @@ function printLiveSheet() {
 }
 
 // ==========================================================================
-// 10. CEVAP ANAHTARI BELİRLEME (TEK DİKEY SÜTUN & KİTAPÇIK A/B/C/D/E)
+// 10. CEVAP ANAHTARI BELİRLEME (TEK DİKEY SÜTUN & KİTAPÇIK A/B/C/D)
 // ==========================================================================
 function setActiveBooklet(booklet) {
   state.activeBooklet = booklet;
   state.answerKeys = getActiveBookletKeyMap(booklet);
-  ['A', 'B', 'C', 'D', 'E'].forEach(b => {
+  ['A', 'B', 'C', 'D'].forEach(b => {
     const btn = document.getElementById(`booklet-tab-${b}`);
     if (btn) btn.classList.toggle('active', b === booklet);
   });
@@ -908,9 +931,9 @@ function renderAnswerMatrix() {
   const container = document.getElementById('answer-matrix-container');
   if (!container) return;
 
-  // Kitapçık butonlarının aktifliğini senkronize et
+  // Kitapçık butonlarının aktifliğini senkronize et (A, B, C, D)
   const currentBooklet = state.activeBooklet || 'A';
-  ['A', 'B', 'C', 'D', 'E'].forEach(b => {
+  ['A', 'B', 'C', 'D'].forEach(b => {
     const btn = document.getElementById(`booklet-tab-${b}`);
     if (btn) btn.classList.toggle('active', b === currentBooklet);
   });
@@ -1486,7 +1509,8 @@ function finishEvaluation() {
         }
       });
 
-      const net = Math.max(0, correct - (wrong / 4));
+      // 4 yanlış 1 doğruyu götürmez (Doğru sayısı doğrudan nettir)
+      const net = correct;
       const score = Math.min(cfg.totalScore * (cfg.percentRatio / 100), net * pointPerQuestion).toFixed(2);
 
       studentsList.push({
@@ -1550,7 +1574,8 @@ function finishEvaluation() {
       }
     });
 
-    const net = Math.max(0, correct - (wrong / 4));
+    // 4 yanlış 1 doğruyu götürmez (Doğru sayısı doğrudan nettir)
+    const net = correct;
     const score = Math.min(cfg.totalScore * (cfg.percentRatio / 100), net * pointPerQuestion).toFixed(2);
     const booklet = state.singleFile ? state.singleFile.booklet : 'A';
     const questionsBreakdown = generateQuestionBreakdown(booklet);
@@ -1808,7 +1833,7 @@ function renderCourseBreakdownCards() {
     const cCorrect = courseQuestions.filter(q => q.status === 'correct').length;
     const cWrong = courseQuestions.filter(q => q.status === 'wrong').length;
     const cEmpty = courseQuestions.filter(q => q.status === 'empty').length;
-    const cNet = Math.max(0, cCorrect - (cWrong / 4)).toFixed(2);
+    const cNet = cCorrect.toFixed(2);
 
     const card = document.createElement('div');
     card.className = 'course-breakdown-item';
