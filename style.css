@@ -747,6 +747,29 @@ body {
   flex-shrink: 0;
 }
 
+.dash-quick-scan-card {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: var(--shadow-sm);
+}
+
+.dash-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  gap: 12px;
+}
+
+.dash-card-header h3 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
 .dash-cards-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -1124,8 +1147,68 @@ input:checked + .slider-small:before { transform: translateX(14px); }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* --------------------------------------------------------------------------
-   10. SETTINGS TAB (FORM CONFIG & ANSWER KEY)
+   10. SETTINGS TAB (AYARLAR MİMARİSİ: SUB-TABS & CANLI A4)
    -------------------------------------------------------------------------- */
+.settings-top-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.settings-sub-tabs {
+  display: flex;
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 4px;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.settings-sub-btn {
+  background: transparent;
+  border: none;
+  padding: 8px 16px;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-sub-btn:hover {
+  color: var(--text-main);
+}
+
+.settings-sub-btn.active {
+  background-color: var(--primary);
+  color: #ffffff;
+  box-shadow: 0 2px 8px var(--primary-glow);
+}
+
+.ayarlar-content-panel {
+  display: block;
+  animation: fadeIn 0.2s ease;
+}
+
+.ayarlar-content-panel.hidden {
+  display: none !important;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 .settings-group-card {
   background-color: var(--bg-surface-elevated);
   border: 1px solid var(--border-subtle);
@@ -1150,6 +1233,24 @@ input:checked + .slider-small:before { transform: translateX(14px); }
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 18px;
+}
+
+.form-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px;
+}
+
+@media (max-width: 960px) {
+  .form-grid-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 520px) {
+  .form-grid-4, .form-grid-3 {
+    grid-template-columns: 1fr;
+  }
 }
 
 .form-control-group {
@@ -1189,125 +1290,74 @@ input:checked + .slider-small:before { transform: translateX(14px); }
   line-height: 1.35;
 }
 
-.toggle-cards-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-}
-
-.toggle-card {
-  background-color: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  padding: 16px 18px;
+/* Sütun & Ders Ekleme Kartları (1'den Başlayan Sorular) */
+.column-items-list {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-}
-
-.toggle-card-info strong {
-  display: block;
-  font-size: 0.88rem;
-  font-weight: 700;
-  color: var(--text-main);
-  margin-bottom: 2px;
-}
-
-.toggle-card-info span {
-  font-size: 0.76rem;
-  color: var(--text-muted);
-}
-
-.switch {
-  position: relative;
-  display: inline-block;
-  width: 44px;
-  height: 24px;
-  flex-shrink: 0;
-}
-
-.switch input { opacity: 0; width: 0; height: 0; }
-
-.slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background-color: var(--border-strong);
-  transition: .2s;
-  border-radius: var(--radius-pill);
-}
-
-.slider:before {
-  position: absolute;
-  content: "";
-  height: 18px;
-  width: 18px;
-  left: 3px;
-  bottom: 3px;
-  background-color: #ffffff;
-  transition: .2s;
-  border-radius: 50%;
-}
-
-input:checked + .slider { background-color: var(--primary); }
-input:checked + .slider:before { transform: translateX(20px); }
-
-.config-callout {
-  background-color: var(--bg-surface);
-  border: 1px dashed var(--border-strong);
-  border-radius: var(--radius-md);
-  padding: 16px 20px;
+  flex-direction: column;
+  gap: 10px;
   margin-top: 14px;
 }
 
-.input-with-action {
-  display: flex;
+.column-item-card {
+  display: grid;
+  grid-template-columns: 28px 2fr 1fr 120px 40px;
   align-items: center;
-  gap: 10px;
-}
-
-.input-with-action .form-input { max-width: 100px; }
-.input-suffix { font-size: 0.82rem; font-weight: 600; color: var(--accent-cyan); }
-
-/* Course List Table */
-.course-list-wrapper {
+  gap: 14px;
   background-color: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  overflow: hidden;
-  margin-top: 12px;
+  padding: 12px 16px;
+  transition: all var(--transition-fast);
 }
 
-.course-list-header {
-  display: grid;
-  grid-template-columns: 2fr 1fr 1fr 70px;
-  padding: 12px 18px;
-  background-color: var(--bg-surface-subtle);
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  border-bottom: 1px solid var(--border-subtle);
+.column-item-card:hover {
+  border-color: var(--border-strong);
 }
 
-.course-row-item {
-  display: grid;
-  grid-template-columns: 2fr 1fr 1fr 70px;
+.col-badge-num {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background-color: var(--primary-light);
+  color: var(--primary);
+  display: flex;
   align-items: center;
-  padding: 10px 18px;
-  border-bottom: 1px solid var(--border-subtle);
-  gap: 12px;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 800;
 }
 
-.course-row-item:last-child { border-bottom: none; }
-.course-row-item .col-name input { height: 36px; font-size: 0.86rem; }
-.course-row-item .col-count input { height: 36px; font-size: 0.86rem; max-width: 110px; }
-.course-row-item .col-range { font-family: var(--font-mono); font-size: 0.82rem; color: var(--accent-cyan); font-weight: 600; }
+.column-item-card .col-name input {
+  height: 38px;
+  font-size: 0.88rem;
+}
 
-.course-row-item .btn-icon-danger {
-  width: 32px;
-  height: 32px;
+.column-item-card .col-count {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.column-item-card .col-count input {
+  height: 38px;
+  font-size: 0.88rem;
+  max-width: 90px;
+}
+
+.column-item-card .col-range-tag {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--accent-cyan);
+  background-color: rgba(6, 182, 212, 0.1);
+  padding: 6px 10px;
+  border-radius: var(--radius-xs);
+  text-align: center;
+}
+
+.btn-icon-danger {
+  width: 36px;
+  height: 36px;
   border-radius: var(--radius-xs);
   background-color: transparent;
   border: 1px solid var(--border-subtle);
@@ -1316,11 +1366,31 @@ input:checked + .slider:before { transform: translateX(20px); }
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: all var(--transition-fast);
 }
 
-.course-row-item .btn-icon-danger:hover {
+.btn-icon-danger:hover {
   background-color: var(--danger-bg);
   border-color: var(--danger-border);
+}
+
+/* Canlı A4 Kağıt Kutusu */
+.live-a4-wrapper-card {
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+}
+
+.live-sheet-display-box {
+  margin-top: 16px;
+  padding: 30px;
+  background-color: var(--bg-body);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  display: flex;
+  justify-content: center;
+  overflow-x: auto;
 }
 
 .computed-pill {
@@ -1338,11 +1408,11 @@ input:checked + .slider:before { transform: translateX(20px); }
 
 .computed-pill small { font-size: 0.76rem; font-weight: 500; color: var(--text-muted); }
 
-/* Answer Matrix */
+/* Answer Matrix - Kompakt & Soru Numarasının Hemen Yanında Baloncuklar */
 .answer-matrix-container {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
   margin-top: 14px;
 }
 
@@ -1350,48 +1420,72 @@ input:checked + .slider:before { transform: translateX(20px); }
   background-color: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  padding: 16px;
+  padding: 12px 14px;
 }
 
-.course-matrix-title {
+.course-matrix-title, .matrix-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 0.92rem;
+  font-size: 0.88rem;
   font-weight: 700;
   color: var(--text-main);
-  padding-bottom: 10px;
+  padding-bottom: 8px;
   border-bottom: 1px solid var(--border-subtle);
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
-.course-matrix-title span {
-  font-size: 0.74rem;
+.course-matrix-title span, .matrix-header span {
+  font-size: 0.72rem;
   font-weight: 600;
   color: var(--accent-cyan);
   font-family: var(--font-mono);
 }
 
+.course-questions-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 4px 10px;
+  max-height: 420px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
 .answer-q-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 6px 4px;
+  justify-content: flex-start;
+  gap: 6px;
+  padding: 3px 2px;
   border-radius: var(--radius-xs);
 }
 
 .answer-q-row:hover { background-color: var(--bg-surface-subtle); }
-.q-number { font-family: var(--font-mono); font-size: 0.82rem; font-weight: 700; color: var(--text-secondary); width: 32px; }
-.bubbles-group { display: flex; align-items: center; gap: 8px; }
+
+.q-number {
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  width: 22px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.bubbles-group {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
 
 .bubble-btn {
-  width: 30px;
-  height: 30px;
+  width: 23px;
+  height: 23px;
   border-radius: 50%;
-  border: 1.5px solid var(--border-strong);
+  border: 1px solid var(--border-strong);
   background-color: var(--bg-surface-elevated);
   color: var(--text-secondary);
-  font-size: 0.8rem;
+  font-size: 0.68rem;
   font-weight: 700;
   display: flex;
   align-items: center;
@@ -1399,14 +1493,15 @@ input:checked + .slider:before { transform: translateX(20px); }
   cursor: pointer;
   transition: all var(--transition-fast);
   user-select: none;
+  padding: 0;
 }
 
-.bubble-btn:hover { border-color: var(--primary); color: var(--primary); transform: scale(1.08); }
+.bubble-btn:hover { border-color: var(--primary); color: var(--primary); }
 .bubble-btn.active {
   background-color: var(--primary);
   border-color: var(--primary);
   color: #ffffff;
-  box-shadow: 0 0 10px var(--primary-glow);
+  box-shadow: 0 0 6px var(--primary-glow);
 }
 
 .settings-footer {
@@ -1659,18 +1754,19 @@ input:checked + .slider:before { transform: translateX(20px); }
   white-space: nowrap;
 }
 
-/* Simulated A4 Optical Sheet */
+/* Simulated A4 Optical Sheet (ÖSYM Standartlarında, 5 Sütun Yan Yana & Harf Kodlamalı) */
 .omr-paper-render {
   width: 100%;
-  max-width: 720px;
+  max-width: 860px;
   background-color: #ffffff;
   color: #111827;
-  border-radius: 4px;
-  padding: 30px 26px;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+  border-radius: 2px;
+  padding: 24px 20px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
   position: relative;
   font-family: Arial, Helvetica, sans-serif;
   user-select: none;
+  border: 1px solid #cbd5e1;
 }
 
 .omr-paper-render .omr-corner-marker {
@@ -1680,101 +1776,352 @@ input:checked + .slider:before { transform: translateX(20px); }
   background-color: #000000;
 }
 
-.omr-corner-marker.tl { top: 12px; left: 12px; }
-.omr-corner-marker.tr { top: 12px; right: 12px; }
-.omr-corner-marker.bl { bottom: 12px; left: 12px; }
-.omr-corner-marker.br { bottom: 12px; right: 12px; }
+.omr-corner-marker.tl { top: 10px; left: 10px; }
+.omr-corner-marker.tr { top: 10px; right: 10px; }
+.omr-corner-marker.bl { bottom: 10px; left: 10px; }
+.omr-corner-marker.br { bottom: 10px; right: 10px; }
 
 .paper-sheet-header {
   text-align: center;
   border-bottom: 2px solid #000000;
-  padding-bottom: 12px;
-  margin-bottom: 16px;
+  padding-bottom: 8px;
+  margin-bottom: 12px;
 }
 
-.paper-sheet-header h2 { font-size: 1.25rem; font-weight: 800; color: #000000; }
-.paper-sheet-header h4 { font-size: 0.85rem; color: #4b5563; margin-top: 2px; }
+.paper-sheet-header h2 { font-size: 1.15rem; font-weight: 800; color: #000000; letter-spacing: 0.02em; }
+.paper-sheet-header h4 { font-size: 0.82rem; color: #374151; margin-top: 2px; font-weight: 700; }
 
-.paper-meta-grid {
+/* ÖSYM Tarzı Ad Soyad & Öğrenci No & Kitapçık Grid */
+.osym-meta-grid {
   display: grid;
-  grid-template-columns: 1.5fr 1fr;
-  gap: 16px;
-  margin-bottom: 20px;
+  grid-template-columns: 1.8fr 1.2fr;
+  gap: 12px;
+  margin-bottom: 14px;
 }
 
-.paper-meta-box {
-  border: 1px solid #111827;
-  border-radius: 4px;
-  padding: 10px 12px;
+.osym-meta-box {
+  border: 1px solid #000000;
+  border-radius: 2px;
+  padding: 6px 8px;
 }
 
-.paper-meta-box-title {
-  font-size: 0.72rem;
+.osym-meta-title {
+  font-size: 0.68rem;
   font-weight: 800;
   text-transform: uppercase;
   color: #000000;
-  margin-bottom: 8px;
-  border-bottom: 1px solid #e5e7eb;
-  padding-bottom: 4px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid #000000;
+  padding-bottom: 2px;
+  text-align: center;
+  letter-spacing: 0.03em;
 }
 
-.paper-bubble-row {
+/* Alfabetik Dikey Kodlama Izgarası */
+.osym-alphabet-grid {
   display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 5px;
+  gap: 3.5px;
+  justify-content: center;
+  overflow-x: auto;
 }
 
-.paper-bubble-row label { font-size: 0.7rem; font-weight: 700; width: 55px; }
+.osym-char-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5px;
+}
 
-.paper-circle {
-  width: 16px;
-  height: 16px;
-  border: 1.5px solid #000000;
+.osym-char-box {
+  width: 13px;
+  height: 14px;
+  border: 1px solid #000000;
+  margin-bottom: 2px;
+  font-size: 0.52rem;
+  font-weight: 800;
+  text-align: center;
+  line-height: 14px;
+  background-color: #f8fafc;
+}
+
+.osym-bubble {
+  width: 11px;
+  height: 11px;
+  border: 1px solid #000000;
   border-radius: 50%;
+  font-size: 0.44rem;
+  font-weight: bold;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.62rem;
-  font-weight: bold;
   color: #000000;
+  line-height: 1;
 }
 
+.osym-bubble.filled {
+  background-color: #000000;
+  color: #ffffff;
+}
+
+/* Soru Sütunları - 5 Sütuna Kadar Yan Yana Sığar */
 .paper-questions-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-  gap: 14px;
-  border-top: 1.5px solid #000000;
-  padding-top: 16px;
+  grid-template-columns: repeat(var(--col-count, 5), minmax(0, 1fr));
+  gap: 6px;
+  border-top: 2px solid #000000;
+  padding-top: 10px;
+  width: 100%;
 }
 
 .paper-section-col {
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-  padding: 8px 10px;
+  border: 1px solid #000000;
+  border-radius: 2px;
+  padding: 4px 2px;
+  background-color: #ffffff;
+  min-width: 0;
 }
 
 .paper-col-header {
-  font-size: 0.74rem;
+  font-size: 0.64rem;
   font-weight: 800;
   text-align: center;
-  background-color: #f3f4f6;
-  padding: 4px;
-  margin-bottom: 8px;
-  border-radius: 2px;
-  border-bottom: 1px solid #9ca3af;
+  background-color: #f1f5f9;
+  padding: 2px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .paper-q-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 5px;
-  font-size: 0.68rem;
+  margin-bottom: 2px;
+  font-size: 0.58rem;
   font-weight: 700;
+  padding: 0 1px;
 }
 
-.paper-q-bubbles { display: flex; gap: 4px; }
+.paper-q-bubbles { display: flex; gap: 2px; }
+
+.paper-circle {
+  width: 12px;
+  height: 12px;
+  border: 1px solid #000000;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.5rem;
+  font-weight: bold;
+  color: #000000;
+  line-height: 1;
+}
+
+/* Görsel Önizleme, Kaldırma & Optik Dışı Uyarı */
+.single-preview-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.preview-image-container {
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  max-height: 290px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+}
+
+.preview-image-container img {
+  max-height: 290px;
+  width: 100%;
+  object-fit: contain;
+}
+
+.preview-actions-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.alert-box-warning {
+  background-color: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.alert-box-warning .alert-icon { font-size: 1.2rem; line-height: 1; }
+.alert-box-warning strong { display: block; font-size: 0.84rem; color: var(--danger); margin-bottom: 2px; }
+.alert-box-warning p { font-size: 0.76rem; color: var(--text-secondary); line-height: 1.35; margin: 0; }
+
+/* Soru Dağılımı (Ders Bazlı, Minimalist, Çorba Olmayan Tasarım) */
+.course-breakdown-cards-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 480px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.course-breakdown-item {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+}
+
+.course-breakdown-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 6px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.course-breakdown-header h5 {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.course-breakdown-chips {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(78px, 1fr));
+  gap: 5px;
+}
+
+.q-chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 6px;
+  border-radius: var(--radius-xs);
+  border: 1px solid var(--border-subtle);
+  font-size: 0.72rem;
+  font-weight: 700;
+  background-color: var(--bg-surface-elevated);
+}
+
+.q-chip.correct {
+  border-color: var(--success-border);
+  background-color: var(--success-bg);
+  color: var(--success);
+}
+
+.q-chip.wrong {
+  border-color: var(--danger-border);
+  background-color: var(--danger-bg);
+  color: var(--danger);
+}
+
+.q-chip.empty {
+  border-color: var(--border-subtle);
+  background-color: var(--bg-surface-subtle);
+  color: var(--text-muted);
+}
+
+/* Öğrenci Detaylı A4 Karnesi (Karne Modal) */
+.karne-paper-wrapper {
+  background: #ffffff;
+  color: #0f172a;
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 28px 24px;
+  border-radius: 4px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  font-family: Arial, Helvetica, sans-serif;
+  user-select: none;
+}
+
+.karne-header-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px solid #0f172a;
+  padding-bottom: 10px;
+  margin-bottom: 14px;
+}
+
+.karne-badge-seal {
+  padding: 5px 12px;
+  border: 2px solid #2563eb;
+  border-radius: 4px;
+  color: #2563eb;
+  font-weight: 800;
+  font-size: 0.78rem;
+  text-align: center;
+}
+
+.karne-student-info-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 14px;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+}
+
+.karne-courses-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--col-count, 5), minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 14px;
+  border-top: 1.5px solid #0f172a;
+  padding-top: 10px;
+}
+
+.karne-q-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.6rem;
+  font-weight: 700;
+  margin-bottom: 2.5px;
+}
+
+.karne-bubble {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.5rem;
+  font-weight: bold;
+}
+
+.karne-bubble.correct-ans {
+  background: #10b981;
+  color: #fff;
+  border-color: #059669;
+}
+
+.karne-bubble.wrong-ans {
+  background: #ef4444;
+  color: #fff;
+  border-color: #dc2626;
+}
+
+.karne-bubble.target-correct {
+  border: 1.8px solid #10b981;
+  color: #059669;
+  font-weight: 900;
+}
 
 /* --------------------------------------------------------------------------
    13. TOAST & NOTIFICATIONS
