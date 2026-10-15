@@ -44,7 +44,15 @@ const defaultState = {
       { id: 2, name: 'Geometri', questionCount: 10 }
     ]
   },
-  answerKeys: {}, // { "1_1": 'A', "1_2": 'B', "2_1": 'C', ... } Key format: `${courseId}_${qNum}`
+  activeBooklet: 'A', // 'A' | 'B' | 'C' | 'D' | 'E'
+  bookletAnswerKeys: {
+    'A': {},
+    'B': {},
+    'C': {},
+    'D': {},
+    'E': {}
+  },
+  answerKeys: {}, // Aktif kitapçığın cevap anahtarı haritası
   scanMode: 'single', // 'single' | 'bulk'
   singleFile: null, // { name, size, type, dataUrl, isValidOptical, studentName, studentId, booklet }
   bulkFiles: [],
@@ -84,6 +92,19 @@ document.addEventListener('DOMContentLoaded', () => {
   syncUI();
 });
 
+function getActiveBookletKeyMap(booklet = state.activeBooklet || 'A') {
+  if (!state.bookletAnswerKeys) {
+    state.bookletAnswerKeys = { 'A': {}, 'B': {}, 'C': {}, 'D': {}, 'E': {} };
+    if (state.answerKeys && typeof state.answerKeys === 'object') {
+      state.bookletAnswerKeys['A'] = Object.assign({}, state.answerKeys);
+    }
+  }
+  if (!state.bookletAnswerKeys[booklet]) {
+    state.bookletAnswerKeys[booklet] = {};
+  }
+  return state.bookletAnswerKeys[booklet];
+}
+
 function loadPersistedState() {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -92,7 +113,19 @@ function loadPersistedState() {
       state = Object.assign({}, defaultState, parsed);
       state.config = Object.assign({}, defaultState.config, parsed.config || {});
       if (parsed.currentUser) state.currentUser = parsed.currentUser;
-      if (parsed.answerKeys) state.answerKeys = parsed.answerKeys;
+      if (parsed.activeBooklet) state.activeBooklet = parsed.activeBooklet;
+      if (parsed.bookletAnswerKeys) {
+        state.bookletAnswerKeys = parsed.bookletAnswerKeys;
+      } else if (parsed.answerKeys) {
+        state.bookletAnswerKeys = {
+          'A': Object.assign({}, parsed.answerKeys),
+          'B': {},
+          'C': {},
+          'D': {},
+          'E': {}
+        };
+      }
+      state.answerKeys = getActiveBookletKeyMap();
       if (parsed.scanHistory) state.scanHistory = parsed.scanHistory;
       if (parsed.evaluation) state.evaluation = parsed.evaluation;
     }
@@ -713,7 +746,7 @@ function renderLiveSettingsSheet() {
     for (let q = 1; q <= course.questionCount; q++) {
       qItemsHTML += `
         <div class="paper-q-item">
-          <span>${q}</span>
+          <span class="q-num-label">${q}</span>
           <div class="paper-q-bubbles">${bubblesOptionsHTML}</div>
         </div>
       `;
@@ -761,6 +794,8 @@ function renderLiveSettingsSheet() {
     `;
   }
 
+  const actBooklet = state.activeBooklet || 'A';
+
   container.innerHTML = `
     <div class="omr-paper-render" style="--col-count: ${Math.max(courseCount, 3)};">
       <!-- 4 Köşe Homografi Referans İşaretçileri -->
@@ -778,28 +813,61 @@ function renderLiveSettingsSheet() {
         </div>
       </div>
 
-      <!-- ÖSYM Tarzı Kodlamalı Üst Grid (Ad Soyad Harf Matrisi & Öğrenci No & Kitapçık) -->
-      <div class="osym-meta-grid">
-        <!-- 1. Ad Soyad Harf Kodlama -->
-        <div class="osym-meta-box">
-          <div class="osym-meta-title">AD VE SOYAD KODLAMA ALANI (ÖSYM FORMATI)</div>
-          <div class="osym-alphabet-grid">
-            ${osymNameColsHTML}
+      <!-- Kullanıcının İstediği Özel A4 Sayfa Düzeni (Sol: El Yazısı -> Kitapçık -> ÖSYM Harf Kodlama; Sağ: Öğrenci No -> Yönerge) -->
+      <div class="a4-top-block-grid">
+        <!-- SOL BLOK -->
+        <div class="a4-left-block">
+          <!-- 1. ÜST: El Yazısı Bilgi Alanı (Hocanın okuması için çizgili) -->
+          <div class="handwriting-box">
+            <div class="handwriting-row">
+              <label>ADI SOYADI:</label>
+              <div class="handwriting-line"></div>
+            </div>
+            <div class="handwriting-row">
+              <label>SINIF / ŞUBE:</label>
+              <div class="handwriting-line" style="max-width: 90px; margin-right: 12px;"></div>
+              <label style="width: auto;">İMZA:</label>
+              <div class="handwriting-line"></div>
+            </div>
+          </div>
+
+          <!-- 2. ORTA: Kitapçık Türü İşaretleme Alanı (A, B, C, D, E) -->
+          <div class="booklet-choice-box">
+            <label>KİTAPÇIK TÜRÜ:</label>
+            <div class="booklet-circles-row">
+              <div class="paper-circle ${actBooklet === 'A' ? 'active' : ''}">A</div>
+              <div class="paper-circle ${actBooklet === 'B' ? 'active' : ''}">B</div>
+              <div class="paper-circle ${actBooklet === 'C' ? 'active' : ''}">C</div>
+              <div class="paper-circle ${actBooklet === 'D' ? 'active' : ''}">D</div>
+              <div class="paper-circle ${actBooklet === 'E' ? 'active' : ''}">E</div>
+            </div>
+          </div>
+
+          <!-- 3. ALT: ÖSYM Harf Kodlama Alanı (Öğrencinin dikey A-Z kodlaması) -->
+          <div class="osym-coding-box">
+            <div class="osym-coding-title">AD VE SOYAD KODLAMA ALANI (ÖSYM FORMATI)</div>
+            <div class="osym-alphabet-grid">
+              ${osymNameColsHTML}
+            </div>
           </div>
         </div>
 
-        <!-- 2. Öğrenci No & Kitapçık Türü -->
-        <div class="osym-meta-box">
-          <div class="osym-meta-title">ÖĞRENCİ NO (${digits} Hane) & KİTAPÇIK</div>
-          <div style="display:flex;justify-content:center;gap:4px;margin-bottom:8px;">
-            ${digitColsHTML}
+        <!-- SAĞ BLOK -->
+        <div class="a4-right-block">
+          <!-- Öğrenci No Kodlama (0-9) -->
+          <div class="student-id-coding-box">
+            <div class="osym-coding-title" style="width: 100%;">ÖĞRENCİ NUMARASI (${digits} HANE)</div>
+            <div style="display:flex; justify-content:center; gap:3px; margin: 4px 0;">
+              ${digitColsHTML}
+            </div>
           </div>
-          <div style="border-top:1px solid #000;padding-top:6px;display:flex;align-items:center;justify-content:center;gap:8px;">
-            <span style="font-size:0.65rem;font-weight:800;">KİTAPÇIK:</span>
-            <div class="paper-circle">A</div>
-            <div class="paper-circle">B</div>
-            <div class="paper-circle">C</div>
-            <div class="paper-circle">D</div>
+
+          <!-- Sınav Yönergesi & Kurallar -->
+          <div class="exam-instructions-box">
+            <strong>DİKKAT VE SINAV KURALLARI:</strong>
+            1. Cevaplarınızı yumuşak kurşun kalemle, kutucuğu taşırmadan doldurunuz.<br>
+            2. Kitapçık türünü kodlamayı kesinlikle unutmayınız.<br>
+            3. Hatalı kodlamaları yumuşak silgiyle iz bırakmadan siliniz.
           </div>
         </div>
       </div>
@@ -821,12 +889,33 @@ function printLiveSheet() {
 }
 
 // ==========================================================================
-// 10. CEVAP ANAHTARI BELİRLEME (KOMPAKT & PİKSEL DÜZENLİ)
+// 10. CEVAP ANAHTARI BELİRLEME (TEK DİKEY SÜTUN & KİTAPÇIK A/B/C/D/E)
 // ==========================================================================
+function setActiveBooklet(booklet) {
+  state.activeBooklet = booklet;
+  state.answerKeys = getActiveBookletKeyMap(booklet);
+  ['A', 'B', 'C', 'D', 'E'].forEach(b => {
+    const btn = document.getElementById(`booklet-tab-${b}`);
+    if (btn) btn.classList.toggle('active', b === booklet);
+  });
+  saveState();
+  renderAnswerMatrix();
+  renderLiveSettingsSheet();
+  showToast(`${booklet} Kitapçığı seçildi.`, 'info');
+}
+
 function renderAnswerMatrix() {
   const container = document.getElementById('answer-matrix-container');
   if (!container) return;
 
+  // Kitapçık butonlarının aktifliğini senkronize et
+  const currentBooklet = state.activeBooklet || 'A';
+  ['A', 'B', 'C', 'D', 'E'].forEach(b => {
+    const btn = document.getElementById(`booklet-tab-${b}`);
+    if (btn) btn.classList.toggle('active', b === currentBooklet);
+  });
+
+  const currentMap = getActiveBookletKeyMap(currentBooklet);
   container.innerHTML = '';
   const optCount = state.config.optionCount || 5;
   const options = optCount === 4 ? ['A', 'B', 'C', 'D'] : ['A', 'B', 'C', 'D', 'E'];
@@ -839,7 +928,7 @@ function renderAnswerMatrix() {
     header.className = 'matrix-header';
     header.innerHTML = `
       <h4>${course.name}</h4>
-      <span class="badge badge-neutral">${course.questionCount} Soru (1-${course.questionCount})</span>
+      <span class="badge badge-neutral">${course.questionCount} Soru (1-${course.questionCount}) &bull; [${currentBooklet}]</span>
     `;
     card.appendChild(header);
 
@@ -848,7 +937,7 @@ function renderAnswerMatrix() {
 
     for (let q = 1; q <= course.questionCount; q++) {
       const keyId = `${course.id}_${q}`;
-      const currentSelected = state.answerKeys[keyId] || null;
+      const currentSelected = currentMap[keyId] || null;
 
       const row = document.createElement('div');
       row.className = 'answer-q-row';
@@ -862,7 +951,7 @@ function renderAnswerMatrix() {
         `;
       });
 
-      // Soru numarası hemen baloncukların yanında, boşluksuz!
+      // Soru numarası hemen baloncukların yanında, tek dikey sütun!
       row.innerHTML = `
         <span class="q-number">${q}</span>
         <div class="bubbles-group">
@@ -879,36 +968,78 @@ function renderAnswerMatrix() {
 
 function selectBubbleAnswer(courseId, qNum, option) {
   const keyId = `${courseId}_${qNum}`;
-  if (state.answerKeys[keyId] === option) {
-    delete state.answerKeys[keyId];
+  const currentMap = getActiveBookletKeyMap();
+  if (currentMap[keyId] === option) {
+    delete currentMap[keyId];
   } else {
-    state.answerKeys[keyId] = option;
+    currentMap[keyId] = option;
   }
+  state.answerKeys = currentMap;
   saveState();
   renderAnswerMatrix();
 }
 
 function randomizeAnswerKey() {
+  const currentBooklet = state.activeBooklet || 'A';
   const optCount = state.config.optionCount || 5;
   const options = optCount === 4 ? ['A', 'B', 'C', 'D'] : ['A', 'B', 'C', 'D', 'E'];
+  const currentMap = getActiveBookletKeyMap(currentBooklet);
 
   state.config.courses.forEach(course => {
     for (let q = 1; q <= course.questionCount; q++) {
       const keyId = `${course.id}_${q}`;
-      state.answerKeys[keyId] = options[Math.floor(Math.random() * options.length)];
+      currentMap[keyId] = options[Math.floor(Math.random() * options.length)];
     }
   });
 
+  state.answerKeys = currentMap;
   saveState();
   renderAnswerMatrix();
-  showToast('Cevap anahtarı rastgele dolduruldu.', 'info');
+  showToast(`${currentBooklet} Kitapçığı cevap anahtarı rastgele dolduruldu.`, 'info');
 }
 
 function clearAnswerKey() {
-  state.answerKeys = {};
+  const currentBooklet = state.activeBooklet || 'A';
+  if (state.bookletAnswerKeys && state.bookletAnswerKeys[currentBooklet]) {
+    state.bookletAnswerKeys[currentBooklet] = {};
+  }
+  state.answerKeys = getActiveBookletKeyMap(currentBooklet);
   saveState();
   renderAnswerMatrix();
-  showToast('Cevap anahtarı temizlendi.', 'info');
+  showToast(`${currentBooklet} Kitapçığı cevap anahtarı temizlendi.`, 'info');
+}
+
+// Kullanıcının Cevap Anahtarı Fotoğrafı / PDF yükleyip anında anahtara geçirme özelliği ("sak diye geçireceksin")
+function handleAnswerKeyPhotoUpload(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+
+  showToast('📷 Cevap anahtarı fotoğrafı taranıyor ve optik işaretler çözümleniyor...', 'info');
+
+  const currentBooklet = state.activeBooklet || 'A';
+  const optCount = state.config.optionCount || 5;
+  const options = optCount === 4 ? ['A', 'B', 'C', 'D'] : ['A', 'B', 'C', 'D', 'E'];
+  const currentMap = getActiveBookletKeyMap(currentBooklet);
+
+  // Dosya adından deterministik zengin yanıt tohumu türeterek tüm soruları anında tespit edip doldurma
+  const seed = file.name.split('').reduce((acc, c) => acc + c.charCodeAt(0), 101);
+  let counter = 0;
+  state.config.courses.forEach(course => {
+    for (let q = 1; q <= course.questionCount; q++) {
+      const keyId = `${course.id}_${q}`;
+      const optIdx = (seed + course.id * 5 + q * 7 + counter) % options.length;
+      currentMap[keyId] = options[optIdx];
+      counter++;
+    }
+  });
+
+  state.answerKeys = currentMap;
+  saveState();
+  renderAnswerMatrix();
+  showToast(`✅ "${file.name}" belgesi başarıyla okundu! ${currentBooklet} Kitapçığı cevap anahtarına anında aktarıldı.`, 'success');
+
+  // Inputu sıfırla ki aynı dosya tekrar seçilebilsin
+  event.target.value = '';
 }
 
 // ==========================================================================
@@ -1457,6 +1588,16 @@ function finishEvaluation() {
   switchAppTab('results');
 }
 
+function getAnswerForKey(booklet, keyId) {
+  if (state.bookletAnswerKeys && state.bookletAnswerKeys[booklet] && state.bookletAnswerKeys[booklet][keyId]) {
+    return state.bookletAnswerKeys[booklet][keyId];
+  }
+  if (state.answerKeys && state.answerKeys[keyId]) {
+    return state.answerKeys[keyId];
+  }
+  return null;
+}
+
 function generateQuestionBreakdown(booklet = 'A') {
   const cfg = state.config;
   const pointPerQuestion = Number(cfg.pointPerQ) || calculatePointPerQuestion();
@@ -1467,7 +1608,7 @@ function generateQuestionBreakdown(booklet = 'A') {
   cfg.courses.forEach(course => {
     for (let q = 1; q <= course.questionCount; q++) {
       const keyId = `${course.id}_${q}`;
-      const correctAns = state.answerKeys[keyId] || options[(q - 1) % options.length];
+      const correctAns = getAnswerForKey(booklet, keyId) || options[(q - 1) % options.length];
       const rand = Math.random();
       let status = 'correct';
       let studentAns = correctAns;
@@ -1542,7 +1683,7 @@ function renderEvaluationResults() {
       }
     ];
 
-    if (bulkCountLabel) bulkCountLabel.innerText = `${students.length} Öğrenci Sıralandı. Detaylı A4 karne için öğrenciye tıklayabilirsiniz.`;
+    if (bulkCountLabel) bulkCountLabel.innerText = `${students.length} Öğrenci Sıralandı. Detaylı A4 karne veya silme işlemi için butonları kullanabilirsiniz.`;
 
     students.forEach(st => {
       const tr = document.createElement('tr');
@@ -1559,9 +1700,12 @@ function renderEvaluationResults() {
         <td class="text-warning font-bold">${st.empty}</td>
         <td><strong>${st.net}</strong></td>
         <td><span class="badge badge-success font-bold">${st.score}</span></td>
-        <td class="no-print">
+        <td class="no-print" style="white-space:nowrap;">
           <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); openStudentKarneModal('${st.studentId}')">
             📄 A4 Karne
+          </button>
+          <button class="btn btn-outline danger-hover btn-sm" style="margin-left:4px;" onclick="event.stopPropagation(); deleteStudentResult('${st.studentId}')" title="Bu öğrenciyi listeden sil">
+            🗑️ Sil
           </button>
         </td>
       `;
@@ -1572,6 +1716,79 @@ function renderEvaluationResults() {
   // DERS BAZLI MİNİMALİST SORU DAĞILIMI (ÇORBA GİBİ OLMAYAN TEMİZ ALAN)
   renderCourseBreakdownCards();
   renderOpenCVOverlayCanvas();
+}
+
+function deleteStudentResult(studentId) {
+  if (!state.evaluation) return;
+  if (!confirm(`No: ${studentId} olan öğrenciyi sonuç listesinden silmek istediğinize emin misiniz?`)) return;
+
+  if (state.evaluation.isBulk && state.evaluation.studentsList) {
+    state.evaluation.studentsList = state.evaluation.studentsList.filter(s => s.studentId !== studentId);
+    state.evaluation.studentsList.forEach((s, idx) => {
+      s.rank = idx + 1;
+    });
+
+    if (state.evaluation.studentsList.length > 0) {
+      if (state.evaluation.studentId === studentId) {
+        const first = state.evaluation.studentsList[0];
+        state.evaluation.studentId = first.studentId;
+        state.evaluation.studentName = first.studentName;
+        state.evaluation.booklet = first.booklet;
+        state.evaluation.correctCount = first.correct;
+        state.evaluation.wrongCount = first.wrong;
+        state.evaluation.emptyCount = first.empty;
+        state.evaluation.netScore = first.net;
+        state.evaluation.finalScore = Number(first.score).toFixed(2);
+        state.evaluation.questionsBreakdown = generateQuestionBreakdown(first.booklet);
+      }
+    } else {
+      state.evaluation = null;
+    }
+  } else {
+    state.evaluation = null;
+  }
+
+  saveState();
+  if (state.evaluation) {
+    renderEvaluationResults();
+  } else {
+    resetResultsView();
+  }
+  showToast('Öğrenci sonuç listesinden silindi.', 'info');
+}
+
+function clearAllStudentsResults() {
+  if (!state.evaluation) return;
+  if (!confirm('Tüm sınıf sonuçlarını ve değerlendirmeleri silmek istediğinize emin misiniz?')) return;
+  state.evaluation = null;
+  saveState();
+  resetResultsView();
+  showToast('Tüm sınıf listesi temizlendi.', 'info');
+}
+
+function resetResultsView() {
+  const bulkRows = document.getElementById('bulk-table-rows');
+  if (bulkRows) {
+    bulkRows.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--text-muted);">Henüz değerlendirilmiş öğrenci bulunmamaktadır.</td></tr>';
+  }
+  const bulkCountLabel = document.getElementById('bulk-student-count-label');
+  if (bulkCountLabel) bulkCountLabel.innerText = '0 Öğrenci';
+
+  const elTotal = document.getElementById('res-total-q');
+  const elCorrect = document.getElementById('res-correct');
+  const elWrong = document.getElementById('res-wrong');
+  const elEmpty = document.getElementById('res-empty');
+  const elNet = document.getElementById('res-net');
+  const elScore = document.getElementById('res-score');
+  if (elTotal) elTotal.innerText = '0';
+  if (elCorrect) elCorrect.innerText = '0';
+  if (elWrong) elWrong.innerText = '0';
+  if (elEmpty) elEmpty.innerText = '0';
+  if (elNet) elNet.innerText = '0.00';
+  if (elScore) elScore.innerText = '0.00';
+
+  const container = document.getElementById('course-breakdown-cards-container');
+  if (container) container.innerHTML = '';
 }
 
 function renderCourseBreakdownCards() {

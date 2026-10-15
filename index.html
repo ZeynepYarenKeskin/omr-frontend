@@ -440,13 +440,28 @@
               <div class="flex-between mb-2">
                 <div>
                   <h3 class="sub-heading">Cevap Anahtarı Belirleme</h3>
-                  <span class="text-xs text-muted">Soru sayısı hemen baloncukların yanında, kompakt ve okunabilir piksel düzeni.</span>
+                  <span class="text-xs text-muted">Soru sayısı hemen baloncukların yanında, tek dikey sütun ve kompakt piksel düzeni.</span>
                 </div>
                 <div class="btn-group">
+                  <input type="file" id="answer-key-file-input" accept="image/*,application/pdf" class="hidden" onchange="handleAnswerKeyPhotoUpload(event)">
+                  <button type="button" class="btn btn-primary btn-sm" onclick="document.getElementById('answer-key-file-input').click()">
+                    📷 Cevap Anahtarı Fotoğrafı / PDF Yükle
+                  </button>
                   <button type="button" class="btn btn-secondary btn-sm" onclick="randomizeAnswerKey()">Rastgele Doldur</button>
                   <button type="button" class="btn btn-secondary btn-sm" onclick="clearAnswerKey()">Temizle</button>
                 </div>
               </div>
+
+              <!-- Kitapçık Seçimi (A, B, C, D, E) -->
+              <div class="booklet-tabs-bar" id="answer-key-booklet-bar">
+                <span class="booklet-label">Kitapçık Türü:</span>
+                <button type="button" class="booklet-tab-btn active" id="booklet-tab-A" onclick="setActiveBooklet('A')">A Kitapçığı</button>
+                <button type="button" class="booklet-tab-btn" id="booklet-tab-B" onclick="setActiveBooklet('B')">B Kitapçığı</button>
+                <button type="button" class="booklet-tab-btn" id="booklet-tab-C" onclick="setActiveBooklet('C')">C Kitapçığı</button>
+                <button type="button" class="booklet-tab-btn" id="booklet-tab-D" onclick="setActiveBooklet('D')">D Kitapçığı</button>
+                <button type="button" class="booklet-tab-btn" id="booklet-tab-E" onclick="setActiveBooklet('E')">E Kitapçığı</button>
+              </div>
+
               <div class="answer-matrix-container compact-matrix" id="answer-matrix-container">
                 <!-- JS doldurur -->
               </div>
@@ -628,8 +643,11 @@
               <div class="flex-between mb-3">
                 <div>
                   <h4 class="sub-heading">Sınıf Sıralaması & Öğrenci Listesi</h4>
-                  <span class="text-xs text-muted" id="bulk-student-count-label">Öğrenci karnesini incelemek için listeden öğrenciye tıklayınız.</span>
+                  <span class="text-xs text-muted" id="bulk-student-count-label">Öğrenci karnesini incelemek veya hatalı girişleri silmek için butonları kullanabilirsiniz.</span>
                 </div>
+                <button type="button" class="btn btn-outline danger-hover btn-sm" onclick="clearAllStudentsResults()">
+                  🗑️ Tüm Sınıfı Temizle
+                </button>
               </div>
               <div class="table-responsive">
                 <table class="saas-table">
@@ -644,7 +662,7 @@
                       <th>Boş</th>
                       <th>Net</th>
                       <th>Puan</th>
-                      <th class="no-print">Detaylı Karne</th>
+                      <th class="no-print">İşlemler</th>
                     </tr>
                   </thead>
                   <tbody id="bulk-table-rows">

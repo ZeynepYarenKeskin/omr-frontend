@@ -1408,10 +1408,10 @@ input:checked + .slider-small:before { transform: translateX(14px); }
 
 .computed-pill small { font-size: 0.76rem; font-weight: 500; color: var(--text-muted); }
 
-/* Answer Matrix - Kompakt & Soru Numarasının Hemen Yanında Baloncuklar */
+/* Answer Matrix - Tek Dikey Sütun (1 2 3... aşağıya doğru) & Kompakt Piksel */
 .answer-matrix-container {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
   gap: 14px;
   margin-top: 14px;
 }
@@ -1420,34 +1420,78 @@ input:checked + .slider-small:before { transform: translateX(14px); }
   background-color: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  padding: 12px 14px;
+  padding: 10px 12px;
 }
 
 .course-matrix-title, .matrix-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 0.88rem;
+  font-size: 0.82rem;
   font-weight: 700;
   color: var(--text-main);
-  padding-bottom: 8px;
+  padding-bottom: 6px;
   border-bottom: 1px solid var(--border-subtle);
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .course-matrix-title span, .matrix-header span {
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 600;
   color: var(--accent-cyan);
   font-family: var(--font-mono);
 }
 
+.booklet-tabs-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 8px;
+  background-color: var(--bg-surface-elevated);
+  padding: 3px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+}
+
+.booklet-tabs-bar .booklet-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  padding: 0 4px;
+}
+
+.booklet-tab-btn {
+  flex: 1;
+  background: transparent;
+  border: none;
+  padding: 4px 6px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: center;
+}
+
+.booklet-tab-btn:hover {
+  color: var(--text-main);
+}
+
+.booklet-tab-btn.active {
+  background-color: var(--primary);
+  color: #ffffff;
+  box-shadow: 0 1px 4px var(--primary-glow);
+}
+
+/* Tek Dikey Sütun - Yukarıdan Aşağıya */
 .course-questions-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-  gap: 4px 10px;
-  max-height: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 2.5px;
+  max-height: 440px;
   overflow-y: auto;
+  overflow-x: hidden;
   padding-right: 4px;
 }
 
@@ -1456,7 +1500,7 @@ input:checked + .slider-small:before { transform: translateX(14px); }
   align-items: center;
   justify-content: flex-start;
   gap: 6px;
-  padding: 3px 2px;
+  padding: 2px 0;
   border-radius: var(--radius-xs);
 }
 
@@ -1464,10 +1508,10 @@ input:checked + .slider-small:before { transform: translateX(14px); }
 
 .q-number {
   font-family: var(--font-mono);
-  font-size: 0.74rem;
+  font-size: 0.7rem;
   font-weight: 700;
   color: var(--text-secondary);
-  width: 22px;
+  width: 20px;
   text-align: right;
   flex-shrink: 0;
 }
@@ -1475,17 +1519,17 @@ input:checked + .slider-small:before { transform: translateX(14px); }
 .bubbles-group {
   display: flex;
   align-items: center;
-  gap: 3px;
+  gap: 2.5px;
 }
 
 .bubble-btn {
-  width: 23px;
-  height: 23px;
+  width: 21px;
+  height: 21px;
   border-radius: 50%;
   border: 1px solid var(--border-strong);
   background-color: var(--bg-surface-elevated);
   color: var(--text-secondary);
-  font-size: 0.68rem;
+  font-size: 0.64rem;
   font-weight: 700;
   display: flex;
   align-items: center;
@@ -1501,7 +1545,7 @@ input:checked + .slider-small:before { transform: translateX(14px); }
   background-color: var(--primary);
   border-color: var(--primary);
   color: #ffffff;
-  box-shadow: 0 0 6px var(--primary-glow);
+  box-shadow: 0 0 5px var(--primary-glow);
 }
 
 .settings-footer {
@@ -1791,36 +1835,94 @@ input:checked + .slider-small:before { transform: translateX(14px); }
 .paper-sheet-header h2 { font-size: 1.15rem; font-weight: 800; color: #000000; letter-spacing: 0.02em; }
 .paper-sheet-header h4 { font-size: 0.82rem; color: #374151; margin-top: 2px; font-weight: 700; }
 
-/* ÖSYM Tarzı Ad Soyad & Öğrenci No & Kitapçık Grid */
-.osym-meta-grid {
+/* ÖSYM Tarzı Sayfa Düzeni (Kullanıcı Talebi: Sol Üst El Yazısı, Orta Kitapçık, Alt Alfabe; Sağ Öğrenci No) */
+.a4-top-block-grid {
   display: grid;
   grid-template-columns: 1.8fr 1.2fr;
   gap: 12px;
-  margin-bottom: 14px;
+  margin-bottom: 12px;
 }
 
-.osym-meta-box {
-  border: 1px solid #000000;
+.a4-left-block {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+/* 1. ÜST: El yazmalı Ad Soyad & Sınıf alanı (Hocanın okuması için çizgili) */
+.handwriting-box {
+  border: 1.5px solid #000000;
   border-radius: 2px;
-  padding: 6px 8px;
+  padding: 5px 8px;
+  background-color: #ffffff;
 }
 
-.osym-meta-title {
-  font-size: 0.68rem;
+.handwriting-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  margin-bottom: 3px;
+}
+
+.handwriting-row label {
+  font-size: 0.62rem;
   font-weight: 800;
-  text-transform: uppercase;
   color: #000000;
-  margin-bottom: 6px;
+  width: 65px;
+  white-space: nowrap;
+}
+
+.handwriting-line {
+  flex: 1;
   border-bottom: 1px solid #000000;
-  padding-bottom: 2px;
-  text-align: center;
+  height: 12px;
+}
+
+/* 2. ORTA: Kitapçık Türü İşaretleme Alanı (A, B, C, D, E) */
+.booklet-choice-box {
+  border: 1.5px solid #000000;
+  border-radius: 2px;
+  padding: 4px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: #ffffff;
+}
+
+.booklet-choice-box label {
+  font-size: 0.64rem;
+  font-weight: 800;
+  color: #000000;
   letter-spacing: 0.03em;
 }
 
-/* Alfabetik Dikey Kodlama Izgarası */
+.booklet-circles-row {
+  display: flex;
+  gap: 6px;
+}
+
+/* 3. ALT: ÖSYM Harf Kodlama Alanı (Öğrencinin kodlaması için dikey A..Z) */
+.osym-coding-box {
+  border: 1.5px solid #000000;
+  border-radius: 2px;
+  padding: 5px 6px;
+  background-color: #ffffff;
+}
+
+.osym-coding-title {
+  font-size: 0.62rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: #000000;
+  margin-bottom: 4px;
+  border-bottom: 1px solid #000000;
+  padding-bottom: 2px;
+  text-align: center;
+}
+
 .osym-alphabet-grid {
   display: flex;
-  gap: 3.5px;
+  gap: 2.5px;
   justify-content: center;
   overflow-x: auto;
 }
@@ -1833,23 +1935,23 @@ input:checked + .slider-small:before { transform: translateX(14px); }
 }
 
 .osym-char-box {
-  width: 13px;
-  height: 14px;
+  width: 12px;
+  height: 13px;
   border: 1px solid #000000;
   margin-bottom: 2px;
-  font-size: 0.52rem;
+  font-size: 0.5rem;
   font-weight: 800;
   text-align: center;
-  line-height: 14px;
+  line-height: 13px;
   background-color: #f8fafc;
 }
 
 .osym-bubble {
-  width: 11px;
-  height: 11px;
+  width: 10.5px;
+  height: 10.5px;
   border: 1px solid #000000;
   border-radius: 50%;
-  font-size: 0.44rem;
+  font-size: 0.42rem;
   font-weight: bold;
   display: flex;
   align-items: center;
@@ -1863,30 +1965,68 @@ input:checked + .slider-small:before { transform: translateX(14px); }
   color: #ffffff;
 }
 
-/* Soru Sütunları - 5 Sütuna Kadar Yan Yana Sığar */
+/* Sağ Blok: Öğrenci No & Sınav Yönergesi */
+.a4-right-block {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.student-id-coding-box {
+  border: 1.5px solid #000000;
+  border-radius: 2px;
+  padding: 5px 6px;
+  background-color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.exam-instructions-box {
+  border: 1.5px solid #000000;
+  border-radius: 2px;
+  padding: 6px 8px;
+  background-color: #f8fafc;
+  font-size: 0.58rem;
+  color: #1e293b;
+  line-height: 1.35;
+}
+
+.exam-instructions-box strong {
+  display: block;
+  font-size: 0.64rem;
+  margin-bottom: 2px;
+  color: #000000;
+}
+
+/* Soru Sütunları - Sabit Kompakt Genişlik & Bitişik Sayı ve Baloncuklar (BOŞLUKSUZ!) */
 .paper-questions-grid {
-  display: grid;
-  grid-template-columns: repeat(var(--col-count, 5), minmax(0, 1fr));
-  gap: 6px;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  justify-content: flex-start;
   border-top: 2px solid #000000;
   padding-top: 10px;
   width: 100%;
+  overflow-x: auto;
 }
 
 .paper-section-col {
-  border: 1px solid #000000;
+  width: 130px;
+  flex: 0 0 130px; /* SABİT GENİŞLİK - Asla sağa sola uzayıp boşluk yapmaz! */
+  border: 1.5px solid #000000;
   border-radius: 2px;
-  padding: 4px 2px;
+  padding: 4px 6px;
   background-color: #ffffff;
-  min-width: 0;
+  box-sizing: border-box;
 }
 
 .paper-col-header {
-  font-size: 0.64rem;
+  font-size: 0.65rem;
   font-weight: 800;
   text-align: center;
   background-color: #f1f5f9;
-  padding: 2px;
+  padding: 2px 4px;
   margin-bottom: 4px;
   border-bottom: 1px solid #94a3b8;
   white-space: nowrap;
@@ -1894,22 +2034,38 @@ input:checked + .slider-small:before { transform: translateX(14px); }
   text-overflow: ellipsis;
 }
 
+/* Soru sayısı hemen baloncukların yanında, aradaki devasa boşluk TAMAMEN KALDIRILDI */
 .paper-q-item {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start; /* space-between DEĞİL! Bitişik! */
+  gap: 4px; /* Soru numarası ile baloncuklar arası 4px */
   margin-bottom: 2px;
-  font-size: 0.58rem;
+  font-size: 0.6rem;
   font-weight: 700;
-  padding: 0 1px;
+  padding: 0;
 }
 
-.paper-q-bubbles { display: flex; gap: 2px; }
+.paper-q-item .q-num-label {
+  width: 16px;
+  text-align: right;
+  flex-shrink: 0;
+  font-size: 0.6rem;
+  font-family: var(--font-mono);
+  color: #000000;
+}
+
+.paper-q-bubbles {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+  flex-shrink: 0;
+}
 
 .paper-circle {
-  width: 12px;
-  height: 12px;
-  border: 1px solid #000000;
+  width: 12.5px;
+  height: 12.5px;
+  border: 1.1px solid #000000;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -1918,6 +2074,12 @@ input:checked + .slider-small:before { transform: translateX(14px); }
   font-weight: bold;
   color: #000000;
   line-height: 1;
+  background-color: #ffffff;
+}
+
+.paper-circle.active {
+  background-color: #000000;
+  color: #ffffff;
 }
 
 /* Görsel Önizleme, Kaldırma & Optik Dışı Uyarı */
