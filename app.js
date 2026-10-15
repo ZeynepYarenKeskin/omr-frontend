@@ -1,1038 +1,1465 @@
 /**
  * ==========================================================================
- * OPTIMATRIX OMR - JAVASCRIPT MOTORU (app.js)
- * C# (.NET 10) ASP.NET Core Web API & SignalR Entegrasyonlu Ön Yüz Motoru
+ * OPTIMATRIX ENTERPRISE OMR - CORE JAVASCRIPT ENGINE (app.js)
+ * Architecture: State Persistence (localStorage), Step-by-Step Locked Wizard,
+ * Dynamic Course & Bubble Sheet Builder, OpenCV Perspective Visualizer,
+ * Bulk Hangfire/SignalR Simulation, Excel/CSV Export
  * ==========================================================================
  */
 
-// Uygulama Durum Yönetimi (State)
-const state = {
-  currentUser: null,
-  activeSection: 'login',
+// --------------------------------------------------------------------------
+// 1. GLOBAL STATE & PERSISTENCE ENGINE
+// --------------------------------------------------------------------------
+const STORAGE_KEY = 'optimatrix_saas_v3';
+
+const defaultState = {
+  view: 'landing', // 'landing' | 'wizard'
+  step: 1,        // 1: Config, 2: Key, 3: Scan, 4: Results
+  maxUnlockedStep: 1,
   theme: 'dark',
-  uploadMode: 'single', // 'single' (Tek Kağıt) | 'bulk' (Toplu Kağıt)
-  keyMode: 'manual',    // 'manual' (Elle) | 'scanned' (Taranan Formdan)
-  selectedFiles: [],    // Yüklenen kağıtlar listesi
-  videoStream: null,
-  selectedImageBase64: null,
-  selectedTemplate: 'tpl_standard_20',
-  currentQuestionCount: 20,
-  currentOptionCount: 5,
-  answerKeys: {},
-  activeKeyId: 'default',
-  currentAnswerKey: {},
-  singleEvaluation: null,
-  bulkEvaluations: [],
-  historyExams: [],
-  signalrConnection: null,
-  apiConfig: {
-    useRealBackend: false,
-    endpointUrl: 'https://localhost:7001/api/exams/evaluate',
-    signalrHubUrl: 'https://localhost:7001/examHub',
-    jwtToken: 'demo_bearer_jwt_token_2026'
-  }
+  config: {
+    examTitle: 'Matematik 1. Ara Sınav',
+    institution: 'Mühendislik Fakültesi',
+    totalScore: 100,
+    hasBooklet: true,
+    hasStudentId: true,
+    studentIdDigits: 8,
+    hasNameBubbles: true,
+    optionCount: 5, // 4 or 5
+    penaltyRatio: 4, // 0, 3, or 4
+    courses: [
+      { id: 1, name: 'Temel Matematik', questionCount: 20 }
+    ]
+  },
+  answerKeys: {}, // { 1: 'A', 2: 'C', ... }
+  scanMode: 'single', // 'single' | 'bulk'
+  inputMethod: 'file', // 'file' | 'camera'
+  singleFile: null, // Data URL
+  bulkFiles: [], // Array of { name, size, dataUrl }
+  useRealBackend: false,
+  evaluation: null // Last evaluated result
 };
 
-const OPTIONS = ['A', 'B', 'C', 'D', 'E'];
+let state = JSON.parse(JSON.stringify(defaultState));
+let webcamStream = null;
 
-/* ==========================================================================
-   1. BAŞLANGIÇ & TEMA YÖNETİMİ
-   ========================================================================== */
+// Initialize on DOM Ready
 document.addEventListener('DOMContentLoaded', () => {
+  loadPersistedState();
   initTheme();
-  loadStoredSettings();
-  initDefaultAnswerKey();
-  initHistoryData();
-  setupDragAndDrop();
-  initSignalR();
-
-  // Varsayılan olarak login ekranında başla
-  navigateTo('login');
+  setupEventListeners();
+  syncUIWithState();
 });
 
+function loadPersistedState() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // Merge with defaults to prevent missing properties
+      state = Object.assign({}, defaultState, parsed);
+      state.config = Object.assign({}, defaultState.config, parsed.config || {});
+    }
+  } catch (err) {
+    console.error('State load error:', err);
+    state = JSON.parse(JSON.stringify(defaultState));
+  }
+}
+
+function saveState() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch (err) {
+    console.warn('LocalStorage save failed:', err);
+  }
+}
+
+// --------------------------------------------------------------------------
+// 2. THEME ENGINE
+// --------------------------------------------------------------------------
 function initTheme() {
-  const savedTheme = localStorage.getItem('omr_theme') || 'dark';
-  applyTheme(savedTheme);
+  const current = state.theme || 'dark';
+  applyTheme(current);
 }
 
 function toggleTheme() {
-  const newTheme = state.theme === 'dark' ? 'light' : 'dark';
-  applyTheme(newTheme);
-  showToast(`${newTheme === 'dark' ? '🌙 Karanlık' : '☀️ Aydınlık'} tema aktif edildi.`, 'info');
+  const next = state.theme === 'dark' ? 'light' : 'dark';
+  applyTheme(next);
+  state.theme = next;
+  saveState();
+  showToast(`${next === 'dark' ? '🌙 Karanlık' : '☀️ Aydınlık'} tema aktif edildi.`, 'info');
 }
 
 function applyTheme(theme) {
-  state.theme = theme;
   document.documentElement.setAttribute('data-theme', theme);
-  localStorage.setItem('omr_theme', theme);
-
-  const sunIcon = document.getElementById('theme-icon-sun');
-  const moonIcon = document.getElementById('theme-icon-moon');
-  const loginThemeText = document.getElementById('login-theme-text');
+  const sunIcon = document.getElementById('theme-sun');
+  const moonIcon = document.getElementById('theme-moon');
 
   if (theme === 'dark') {
     if (sunIcon) sunIcon.classList.remove('hidden');
     if (moonIcon) moonIcon.classList.add('hidden');
-    if (loginThemeText) loginThemeText.innerText = '☀️ Aydınlık Mod';
   } else {
     if (sunIcon) sunIcon.classList.add('hidden');
     if (moonIcon) moonIcon.classList.remove('hidden');
-    if (loginThemeText) loginThemeText.innerText = '🌙 Karanlık Mod';
   }
 }
 
-/* ==========================================================================
-   2. SPA NAVİGASYON (ROUTER)
-   ========================================================================== */
-function navigateTo(sectionId) {
-  if (!state.currentUser && sectionId !== 'login') {
-    showToast('Lütfen önce sisteme giriş yapın.', 'error');
-    navigateTo('login');
-    return;
+// --------------------------------------------------------------------------
+// 3. TOAST NOTIFICATIONS
+// --------------------------------------------------------------------------
+function showToast(message, type = 'info') {
+  const container = document.getElementById('toast-container');
+  if (!container) return;
+
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+  toast.innerHTML = `
+    <span>${message}</span>
+  `;
+  container.appendChild(toast);
+
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateY(10px)';
+    toast.style.transition = 'all 0.25s ease';
+    setTimeout(() => toast.remove(), 250);
+  }, 3200);
+}
+
+// --------------------------------------------------------------------------
+// 4. VIEW & STEP-BY-STEP WIZARD ROUTING
+// --------------------------------------------------------------------------
+function startWizard() {
+  state.view = 'wizard';
+  saveState();
+  syncUIWithState();
+}
+
+function goHome() {
+  state.view = 'landing';
+  saveState();
+  syncUIWithState();
+}
+
+function proceedToStep(step) {
+  // Validations before moving to next step
+  if (step === 2) {
+    syncConfigFromDOM();
+    const totalQ = getTotalQuestions();
+    if (totalQ <= 0) {
+      showToast('Lütfen en az bir ders ve 1 soru ekleyin.', 'error');
+      return;
+    }
   }
 
-  document.querySelectorAll('.spa-section').forEach(sec => {
-    sec.classList.add('hidden');
-    sec.classList.remove('active');
-  });
-
-  const targetSection = document.getElementById(`${sectionId}-section`);
-  if (targetSection) {
-    targetSection.classList.remove('hidden');
-    targetSection.classList.add('active');
-    state.activeSection = sectionId;
+  if (step > state.maxUnlockedStep) {
+    state.maxUnlockedStep = step;
   }
 
-  const header = document.getElementById('main-header');
-  if (sectionId === 'login') {
-    header.classList.add('hidden');
-    stopCamera();
-  } else {
-    header.classList.remove('hidden');
-  }
-
-  document.querySelectorAll('.nav-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.getAttribute('data-target') === sectionId);
-  });
-
-  if (sectionId === 'answer-key') {
-    renderAnswerGrid();
-  } else if (sectionId === 'scan') {
-    updateAnswerKeySelectDropdown();
-  } else if (sectionId === 'history') {
-    renderHistoryTable();
-  }
-
+  state.step = step;
+  saveState();
+  syncUIWithState();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-/* ==========================================================================
-   3. GİRİŞ VE KAYIT OL (AUTH - BCrypt & JWT Destekli)
-   ========================================================================== */
-function switchAuthTab(tab) {
-  const tabLogin = document.getElementById('tab-login');
-  const tabRegister = document.getElementById('tab-register');
-  const formLogin = document.getElementById('form-login');
-  const formRegister = document.getElementById('form-register');
+function jumpToStep(step) {
+  if (step > state.maxUnlockedStep) {
+    showToast(`Adım ${step}'e geçmeden önce önceki adımları tamamlamalısınız.`, 'error');
+    return;
+  }
+  proceedToStep(step);
+}
 
-  if (tab === 'login') {
-    tabLogin.classList.add('active');
-    tabRegister.classList.remove('active');
-    formLogin.classList.remove('hidden');
-    formRegister.classList.add('hidden');
-  } else {
-    tabRegister.classList.add('active');
-    tabLogin.classList.remove('active');
-    formRegister.classList.remove('hidden');
-    formLogin.classList.add('hidden');
+function confirmResetSession() {
+  if (confirm('Tüm sınav ayarları, cevap anahtarı ve değerlendirme sonuçları sıfırlanacak. Devam etmek istiyor musunuz?')) {
+    localStorage.removeItem(STORAGE_KEY);
+    state = JSON.parse(JSON.stringify(defaultState));
+    saveState();
+    syncUIWithState();
+    showToast('Yeni sınav oturumu başlatıldı.', 'info');
   }
 }
 
-function handleLogin(event) {
-  event.preventDefault();
-  const email = document.getElementById('login-email').value.trim();
+// --------------------------------------------------------------------------
+// 5. DOM SYNC & STATE BINDING
+// --------------------------------------------------------------------------
+function syncUIWithState() {
+  const landingView = document.getElementById('view-landing');
+  const wizardView = document.getElementById('view-wizard');
+  const stepperHeader = document.getElementById('wizard-stepper-header');
+  const resetBtn = document.getElementById('reset-session-btn');
 
-  let displayName = email.split('@')[0];
-  displayName = displayName.charAt(0).toUpperCase() + displayName.slice(1);
-
-  state.currentUser = { email: email, name: displayName };
-  setUserDisplay(state.currentUser.name);
-  showToast(`Giriş başarılı. Hoş geldin, ${state.currentUser.name}!`, 'success');
-  navigateTo('dashboard');
-}
-
-function handleRegister(event) {
-  event.preventDefault();
-  const name = document.getElementById('reg-name').value.trim();
-  const email = document.getElementById('reg-email').value.trim();
-
-  state.currentUser = { email: email, name: name || 'Kullanıcı' };
-  setUserDisplay(state.currentUser.name);
-  showToast(`Kayıt oluşturuldu. Hoş geldin, ${state.currentUser.name}!`, 'success');
-  navigateTo('dashboard');
-}
-
-function setUserDisplay(name) {
-  document.getElementById('dash-username').innerText = name;
-  const initials = name.substring(0, 2).toUpperCase();
-  document.getElementById('user-display').innerText = initials;
-}
-
-function handleLogout() {
-  stopCamera();
-  state.currentUser = null;
-  state.selectedImageBase64 = null;
-  state.selectedFiles = [];
-  showToast('Oturum kapatıldı.', 'info');
-  navigateTo('login');
-}
-
-/* ==========================================================================
-   4. CEVAP ANAHTARI YÖNETİMİ (MANUEL | TARANAN)
-   ========================================================================== */
-function switchKeyMode(mode) {
-  state.keyMode = mode;
-  document.getElementById('key-tab-manual').classList.toggle('active', mode === 'manual');
-  document.getElementById('key-tab-scanned').classList.toggle('active', mode === 'scanned');
-  document.getElementById('scanned-key-panel').classList.toggle('hidden', mode !== 'scanned');
-}
-
-function handleScannedKeyUpload(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-
-  const reader = new FileReader();
-  reader.onload = () => {
-    // Taranan kağıttan otomatik cevap anahtarı simülasyonu
-    randomizeAnswerKey();
-    showToast('Öğretmen formundan cevap anahtarı otomatik çıkarıldı!', 'success');
-    switchKeyMode('manual');
-  };
-  reader.readAsDataURL(file);
-}
-
-function initDefaultAnswerKey() {
-  const savedKeys = localStorage.getItem('omr_answer_keys');
-  if (savedKeys) {
-    state.answerKeys = JSON.parse(savedKeys);
-  } else {
-    state.answerKeys = {
-      default: {
-        id: 'default',
-        title: 'Matematik 1. Ara Sınav',
-        template: 'tpl_standard_20',
-        questionCount: 20,
-        optionCount: 5,
-        penaltyRatio: 4,
-        answers: {
-          1:'A', 2:'B', 3:'C', 4:'D', 5:'E',
-          6:'A', 7:'B', 8:'C', 9:'D', 10:'E',
-          11:'A', 12:'C', 13:'B', 14:'D', 15:'A',
-          16:'B', 17:'E', 18:'C', 19:'D', 20:'A'
-        }
-      }
-    };
-    localStorage.setItem('omr_answer_keys', JSON.stringify(state.answerKeys));
-  }
-
-  const def = state.answerKeys[state.activeKeyId] || Object.values(state.answerKeys)[0];
-  state.currentAnswerKey = { ...def.answers };
-  state.currentQuestionCount = def.questionCount;
-  state.currentOptionCount = def.optionCount;
-}
-
-function renderAnswerGrid() {
-  const gridContainer = document.getElementById('answer-grid');
-  gridContainer.innerHTML = '';
-  const opts = OPTIONS.slice(0, state.currentOptionCount);
-
-  for (let q = 1; q <= state.currentQuestionCount; q++) {
-    const row = document.createElement('div');
-    row.className = 'question-row';
-
-    const numSpan = document.createElement('span');
-    numSpan.className = 'q-number';
-    numSpan.innerText = `${q}.`;
-    row.appendChild(numSpan);
-
-    const optsDiv = document.createElement('div');
-    optsDiv.className = 'q-options';
-
-    opts.forEach(opt => {
-      const bubble = document.createElement('button');
-      bubble.type = 'button';
-      bubble.className = `bubble-btn ${state.currentAnswerKey[q] === opt ? 'selected' : ''}`;
-      bubble.innerText = opt;
-      bubble.onclick = () => selectBubbleAnswer(q, opt);
-      optsDiv.appendChild(bubble);
-    });
-
-    row.appendChild(optsDiv);
-    gridContainer.appendChild(row);
-  }
-}
-
-function selectBubbleAnswer(questionNum, option) {
-  if (state.currentAnswerKey[questionNum] === option) {
-    delete state.currentAnswerKey[questionNum];
-  } else {
-    state.currentAnswerKey[questionNum] = option;
-  }
-  renderAnswerGrid();
-}
-
-function changeQuestionCount(val) {
-  let count = parseInt(val, 10);
-  if (isNaN(count) || count < 1) count = 1;
-  if (count > 150) count = 150;
-  state.currentQuestionCount = count;
-  renderAnswerGrid();
-}
-
-function changeOptionCount(val) {
-  state.currentOptionCount = parseInt(val, 10) || 5;
-  renderAnswerGrid();
-}
-
-function randomizeAnswerKey() {
-  const opts = OPTIONS.slice(0, state.currentOptionCount);
-  for (let q = 1; q <= state.currentQuestionCount; q++) {
-    state.currentAnswerKey[q] = opts[Math.floor(Math.random() * opts.length)];
-  }
-  renderAnswerGrid();
-  showToast(`${state.currentQuestionCount} soruluk cevap anahtarı rastgele dolduruldu.`, 'info');
-}
-
-function clearAnswerKey() {
-  state.currentAnswerKey = {};
-  renderAnswerGrid();
-  showToast('Cevap anahtarı temizlendi.', 'info');
-}
-
-function saveAnswerKey() {
-  const title = document.getElementById('exam-title-input').value.trim() || 'Yeni Sınav';
-  const countInput = document.getElementById('question-count-input');
-  const count = countInput ? (parseInt(countInput.value, 10) || state.currentQuestionCount) : state.currentQuestionCount;
-  const totalScoreInput = document.getElementById('total-score-input');
-  const totalScore = totalScoreInput ? (parseFloat(totalScoreInput.value) || 100) : 100;
-  const penalty = parseInt(document.getElementById('penalty-ratio-select').value, 10);
-  const optSelect = document.getElementById('option-count-select');
-  const optCount = optSelect ? parseInt(optSelect.value, 10) : state.currentOptionCount;
-
-  state.currentQuestionCount = count;
-  state.totalExamScore = totalScore;
-  state.currentOptionCount = optCount;
-
-  const keyId = 'key_' + Date.now();
-  state.answerKeys[keyId] = {
-    id: keyId,
-    title: title,
-    totalScore: totalScore,
-    questionCount: count,
-    optionCount: optCount,
-    penaltyRatio: penalty,
-    answers: { ...state.currentAnswerKey }
-  };
-
-  state.activeKeyId = keyId;
-  localStorage.setItem('omr_answer_keys', JSON.stringify(state.answerKeys));
-  showToast(`"${title}" (${count} Soru - ${totalScore} Puan) kaydedildi!`, 'success');
-}
-
-function updateAnswerKeySelectDropdown() {
-  const select = document.getElementById('active-key-select');
-  select.innerHTML = '';
-  Object.values(state.answerKeys).forEach(key => {
-    const opt = document.createElement('option');
-    opt.value = key.id;
-    opt.innerText = `${key.title} (${key.questionCount} Soru)`;
-    if (key.id === state.activeKeyId) opt.selected = true;
-    select.appendChild(opt);
-  });
-}
-
-/* ==========================================================================
-   5. KAĞIT YÜKLEME (TEKLİ / TOPLU MOD & SİGNALR)
-   ========================================================================== */
-function setUploadMode(mode) {
-  state.uploadMode = mode;
-  document.getElementById('btn-mode-single').classList.toggle('active', mode === 'single');
-  document.getElementById('btn-mode-bulk').classList.toggle('active', mode === 'bulk');
-
-  const singleTabs = document.getElementById('single-mode-tabs');
-  const bulkBanner = document.getElementById('bulk-mode-banner');
-  const fileInput = document.getElementById('file-input');
-  const dropTitle = document.getElementById('drop-title');
-  const previewBoxTitle = document.getElementById('preview-box-title');
-
-  if (mode === 'bulk') {
-    singleTabs.classList.add('hidden');
-    bulkBanner.classList.remove('hidden');
-    fileInput.setAttribute('multiple', 'true');
-    dropTitle.innerText = 'Çoklu Optik Kağıtları Sürükleyin veya Seçin';
-    previewBoxTitle.innerText = 'Yüklenen Kağıt Listesi (Toplu)';
-    switchScanTab('file');
-  } else {
-    singleTabs.classList.remove('hidden');
-    bulkBanner.classList.add('hidden');
-    fileInput.removeAttribute('multiple');
-    dropTitle.innerText = 'Optik Kağıdı Seçin veya Sürükleyin';
-    previewBoxTitle.innerText = 'Seçilen Kağıt Önizlemesi';
-  }
-
-  resetUploadPreview();
-}
-
-function resetUploadPreview() {
-  state.selectedFiles = [];
-  state.selectedImageBase64 = null;
-  document.getElementById('form-preview-img').classList.add('hidden');
-  document.getElementById('no-image-placeholder').classList.remove('hidden');
-  document.getElementById('bulk-queue-list').classList.add('hidden');
-  document.getElementById('preview-status').className = 'status-pill gray';
-  document.getElementById('preview-status').innerText = 'Kağıt Bekleniyor';
-  document.getElementById('evaluate-btn').disabled = true;
-}
-
-function switchScanTab(tabName) {
-  document.getElementById('tab-btn-file').classList.toggle('active', tabName === 'file');
-  document.getElementById('tab-btn-camera').classList.toggle('active', tabName === 'camera');
-  document.getElementById('file-upload-panel').classList.toggle('active', tabName === 'file');
-  document.getElementById('file-upload-panel').classList.toggle('hidden', tabName !== 'file');
-  document.getElementById('camera-upload-panel').classList.toggle('active', tabName === 'camera');
-  document.getElementById('camera-upload-panel').classList.toggle('hidden', tabName !== 'camera');
-
-  if (tabName !== 'camera') stopCamera();
-  else startCamera();
-}
-
-function setupDragAndDrop() {
-  const dropZone = document.getElementById('drop-zone');
-  if (!dropZone) return;
-
-  ['dragenter', 'dragover'].forEach(name => {
-    dropZone.addEventListener(name, (e) => {
-      e.preventDefault();
-      dropZone.classList.add('dragover');
-    });
-  });
-
-  ['dragleave', 'drop'].forEach(name => {
-    dropZone.addEventListener(name, (e) => {
-      e.preventDefault();
-      dropZone.classList.remove('dragover');
-    });
-  });
-
-  dropZone.addEventListener('drop', (e) => {
-    const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
-    if (files.length > 0) processUploadedFiles(files);
-  });
-}
-
-function handleFileSelect(event) {
-  const files = Array.from(event.target.files).filter(f => f.type.startsWith('image/'));
-  if (files.length > 0) processUploadedFiles(files);
-}
-
-function processUploadedFiles(files) {
-  state.selectedFiles = files;
-  const statusPill = document.getElementById('preview-status');
-  const evalBtn = document.getElementById('evaluate-btn');
-
-  if (state.uploadMode === 'single') {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      setSinglePreview(e.target.result);
-      statusPill.className = 'status-pill success';
-      statusPill.innerText = 'Tek Kağıt Hazır';
-      evalBtn.disabled = false;
-      showToast('Optik form yüklendi.', 'success');
-    };
-    reader.readAsDataURL(files[0]);
-  } else {
-    // Toplu Liste
-    document.getElementById('preview-container').classList.add('hidden');
-    const queueList = document.getElementById('bulk-queue-list');
-    queueList.classList.remove('hidden');
-    queueList.innerHTML = '';
-
-    files.forEach((file, idx) => {
-      const item = document.createElement('div');
-      item.className = 'bulk-queue-item';
-      item.innerHTML = `
-        <span>📄 <strong>Kağıt #${idx + 1}:</strong> ${file.name}</span>
-        <span class="badge badge-subtle">${(file.size / 1024).toFixed(1)} KB</span>
-      `;
-      queueList.appendChild(item);
-    });
-
-    statusPill.className = 'status-pill success';
-    statusPill.innerText = `${files.length} Kağıt Kuyrukta`;
-    evalBtn.disabled = false;
-    showToast(`${files.length} adet sınav kağıdı toplu kuyruğa alındı!`, 'success');
-  }
-}
-
-function setSinglePreview(dataUrl) {
-  state.selectedImageBase64 = dataUrl;
-  document.getElementById('preview-container').classList.remove('hidden');
-  document.getElementById('bulk-queue-list').classList.add('hidden');
-  const img = document.getElementById('form-preview-img');
-  const placeholder = document.getElementById('no-image-placeholder');
-
-  img.src = dataUrl;
-  img.classList.remove('hidden');
-  placeholder.classList.add('hidden');
-}
-
-// Web Kamera İşlemleri (3-4 Köşe Hizalama)
-async function startCamera() {
-  try {
-    const video = document.getElementById('camera-feed');
-    if (state.videoStream) stopCamera();
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
-    });
-    state.videoStream = stream;
-    video.srcObject = stream;
-    showToast('Kamera açıldı. 4 köşe referans noktasını çerçeveye oturtun.', 'info');
-  } catch (err) {
-    showToast('Kameraya erişilemedi.', 'error');
-  }
-}
-
-function captureCameraSnapshot() {
-  const video = document.getElementById('camera-feed');
-  if (!state.videoStream || video.videoWidth === 0) {
-    showToast('Önce kamerayı başlatın.', 'error');
+  if (state.view === 'landing') {
+    if (landingView) landingView.classList.remove('hidden');
+    if (wizardView) wizardView.classList.add('hidden');
+    if (stepperHeader) stepperHeader.style.display = 'none';
+    if (resetBtn) resetBtn.classList.add('hidden');
     return;
   }
 
-  const canvas = document.createElement('canvas');
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-  canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+  // Wizard is active
+  if (landingView) landingView.classList.add('hidden');
+  if (wizardView) wizardView.classList.remove('hidden');
+  if (stepperHeader) stepperHeader.style.display = 'block';
+  if (resetBtn) resetBtn.classList.remove('hidden');
 
-  const snapshotUrl = canvas.toDataURL('image/jpeg', 0.9);
-  setSinglePreview(snapshotUrl);
-  document.getElementById('preview-status').className = 'status-pill success';
-  document.getElementById('preview-status').innerText = 'Fotoğraf Çekildi';
-  document.getElementById('evaluate-btn').disabled = false;
-  showToast('Kağıt fotoğrafı çekildi!', 'success');
-}
+  // Update stepper badges in header
+  for (let i = 1; i <= 4; i++) {
+    const badge = document.getElementById(`step-badge-${i}`);
+    if (badge) {
+      badge.classList.remove('active', 'completed', 'disabled');
+      if (i === state.step) {
+        badge.classList.add('active');
+      } else if (i < state.step || i <= state.maxUnlockedStep) {
+        badge.classList.add('completed');
+      } else {
+        badge.classList.add('disabled');
+      }
+    }
 
-function stopCamera() {
-  if (state.videoStream) {
-    state.videoStream.getTracks().forEach(t => t.stop());
-    state.videoStream = null;
-    const v = document.getElementById('camera-feed');
-    if (v) v.srcObject = null;
+    // Toggle step cards
+    const stepEl = document.getElementById(`wizard-step-${i}`);
+    if (stepEl) {
+      if (i === state.step) {
+        stepEl.classList.add('active');
+        stepEl.classList.remove('hidden');
+      } else {
+        stepEl.classList.remove('active');
+        stepEl.classList.add('hidden');
+      }
+    }
+  }
+
+  // Synchronize step-specific components
+  if (state.step === 1) {
+    populateStep1DOM();
+  } else if (state.step === 2) {
+    renderAnswerMatrix();
+  } else if (state.step === 3) {
+    syncStep3UI();
+  } else if (state.step === 4) {
+    renderEvaluationResults();
   }
 }
 
-// Örnek Form Üretici (Öğrenci Numarası da Bubble ile Kodlanan Form)
-function loadSampleForm() {
+function setupEventListeners() {
+  // Input changes on Step 1
+  const examTitleInput = document.getElementById('cfg-exam-title');
+  const institutionInput = document.getElementById('cfg-institution');
+  const totalScoreInput = document.getElementById('cfg-total-score');
+  const studentDigitsInput = document.getElementById('cfg-studentid-digits');
+
+  if (examTitleInput) examTitleInput.addEventListener('input', () => { state.config.examTitle = examTitleInput.value; saveState(); });
+  if (institutionInput) institutionInput.addEventListener('input', () => { state.config.institution = institutionInput.value; saveState(); });
+  if (totalScoreInput) totalScoreInput.addEventListener('input', () => { 
+    state.config.totalScore = Number(totalScoreInput.value) || 100; 
+    updateCourseTotals(); 
+    saveState(); 
+  });
+  if (studentDigitsInput) studentDigitsInput.addEventListener('input', () => {
+    state.config.studentIdDigits = Math.max(4, Math.min(12, Number(studentDigitsInput.value) || 8));
+    saveState();
+  });
+
+  // Drag and drop for upload zone
+  const dropZone = document.getElementById('file-drop-zone');
+  if (dropZone) {
+    ['dragenter', 'dragover'].forEach(eventName => {
+      dropZone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dropZone.classList.add('dragover');
+      });
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+      dropZone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dropZone.classList.remove('dragover');
+      });
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+      const dt = e.dataTransfer;
+      const files = dt.files;
+      if (files && files.length > 0) {
+        processIncomingFiles(files);
+      }
+    });
+  }
+}
+
+// --------------------------------------------------------------------------
+// 6. STEP 1: DYNAMIC FORM CONFIGURATION & COURSE BUILDER
+// --------------------------------------------------------------------------
+function populateStep1DOM() {
+  const cfg = state.config;
+  const examTitleInput = document.getElementById('cfg-exam-title');
+  const instInput = document.getElementById('cfg-institution');
+  const totalScoreInput = document.getElementById('cfg-total-score');
+  const bookletCheckbox = document.getElementById('cfg-has-booklet');
+  const studentIdCheckbox = document.getElementById('cfg-has-studentid');
+  const nameCheckbox = document.getElementById('cfg-has-namebubbles');
+  const digitsInput = document.getElementById('cfg-studentid-digits');
+  const optionSelect = document.getElementById('cfg-option-count');
+  const penaltySelect = document.getElementById('cfg-penalty-ratio');
+
+  if (examTitleInput) examTitleInput.value = cfg.examTitle || '';
+  if (instInput) instInput.value = cfg.institution || '';
+  if (totalScoreInput) totalScoreInput.value = cfg.totalScore || 100;
+  if (bookletCheckbox) bookletCheckbox.checked = !!cfg.hasBooklet;
+  if (studentIdCheckbox) studentIdCheckbox.checked = !!cfg.hasStudentId;
+  if (nameCheckbox) nameCheckbox.checked = !!cfg.hasNameBubbles;
+  if (digitsInput) digitsInput.value = cfg.studentIdDigits || 8;
+  if (optionSelect) optionSelect.value = String(cfg.optionCount || 5);
+  if (penaltySelect) penaltySelect.value = String(cfg.penaltyRatio || 4);
+
+  toggleStudentIdConfig();
+  renderCourseRows();
+}
+
+function syncConfigFromDOM() {
+  const cfg = state.config;
+  const examTitleInput = document.getElementById('cfg-exam-title');
+  const instInput = document.getElementById('cfg-institution');
+  const totalScoreInput = document.getElementById('cfg-total-score');
+  const bookletCheckbox = document.getElementById('cfg-has-booklet');
+  const studentIdCheckbox = document.getElementById('cfg-has-studentid');
+  const nameCheckbox = document.getElementById('cfg-has-namebubbles');
+  const digitsInput = document.getElementById('cfg-studentid-digits');
+  const optionSelect = document.getElementById('cfg-option-count');
+  const penaltySelect = document.getElementById('cfg-penalty-ratio');
+
+  if (examTitleInput) cfg.examTitle = examTitleInput.value.trim();
+  if (instInput) cfg.institution = instInput.value.trim();
+  if (totalScoreInput) cfg.totalScore = Number(totalScoreInput.value) || 100;
+  if (bookletCheckbox) cfg.hasBooklet = bookletCheckbox.checked;
+  if (studentIdCheckbox) cfg.hasStudentId = studentIdCheckbox.checked;
+  if (nameCheckbox) cfg.hasNameBubbles = nameCheckbox.checked;
+  if (digitsInput) cfg.studentIdDigits = Number(digitsInput.value) || 8;
+  if (optionSelect) cfg.optionCount = Number(optionSelect.value) || 5;
+  if (penaltySelect) cfg.penaltyRatio = Number(penaltySelect.value) || 0;
+
+  saveState();
+}
+
+function saveWizardState() {
+  syncConfigFromDOM();
+  updateCourseTotals();
+}
+
+function toggleStudentIdConfig() {
+  const chk = document.getElementById('cfg-has-studentid');
+  const box = document.getElementById('studentid-config-box');
+  if (chk && box) {
+    state.config.hasStudentId = chk.checked;
+    box.style.display = chk.checked ? 'block' : 'none';
+    saveState();
+  }
+}
+
+function onOptionCountChange() {
+  const sel = document.getElementById('cfg-option-count');
+  if (sel) {
+    state.config.optionCount = Number(sel.value);
+    saveState();
+    showToast(`Optik form ${state.config.optionCount} şıklı (A-${state.config.optionCount === 4 ? 'D' : 'E'}) olarak güncellendi.`, 'info');
+  }
+}
+
+function renderCourseRows() {
+  const container = document.getElementById('course-rows-container');
+  if (!container) return;
+
+  container.innerHTML = '';
+  let cumulativeQuestions = 0;
+
+  state.config.courses.forEach((course, index) => {
+    const startQ = cumulativeQuestions + 1;
+    const endQ = cumulativeQuestions + course.questionCount;
+    cumulativeQuestions = endQ;
+
+    const row = document.createElement('div');
+    row.className = 'course-row-item';
+    row.innerHTML = `
+      <div class="col-name">
+        <input type="text" class="form-input" value="${course.name}" 
+               placeholder="Ders Adı" onchange="updateCourseName(${index}, this.value)">
+      </div>
+      <div class="col-count">
+        <input type="number" class="form-input" min="1" max="100" value="${course.questionCount}" 
+               onchange="updateCourseQuestions(${index}, this.value)">
+      </div>
+      <div class="col-range">
+        <span>Soru ${startQ} - ${endQ}</span>
+      </div>
+      <div class="col-actions">
+        <button class="btn-icon-danger" title="Dersi Sil" onclick="removeCourseRow(${index})">
+          <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          </svg>
+        </button>
+      </div>
+    `;
+    container.appendChild(row);
+  });
+
+  updateCourseTotals();
+}
+
+function addNewCourseRow() {
+  const newId = (state.config.courses.length > 0 ? Math.max(...state.config.courses.map(c => c.id)) : 0) + 1;
+  state.config.courses.push({
+    id: newId,
+    name: `Ders / Bölüm ${state.config.courses.length + 1}`,
+    questionCount: 10
+  });
+  saveState();
+  renderCourseRows();
+}
+
+function removeCourseRow(index) {
+  if (state.config.courses.length <= 1) {
+    showToast('En az bir ders bulunmalıdır.', 'warning');
+    return;
+  }
+  state.config.courses.splice(index, 1);
+  saveState();
+  renderCourseRows();
+}
+
+function updateCourseName(index, val) {
+  if (state.config.courses[index]) {
+    state.config.courses[index].name = val.trim() || `Ders ${index + 1}`;
+    saveState();
+  }
+}
+
+function updateCourseQuestions(index, val) {
+  if (state.config.courses[index]) {
+    const count = Math.max(1, Math.min(100, Number(val) || 1));
+    state.config.courses[index].questionCount = count;
+    saveState();
+    renderCourseRows();
+  }
+}
+
+function getTotalQuestions() {
+  return state.config.courses.reduce((sum, c) => sum + (Number(c.questionCount) || 0), 0);
+}
+
+function updateCourseTotals() {
+  const totalQ = getTotalQuestions();
+  const totalScore = Number(state.config.totalScore) || 100;
+  const pointsPerQ = totalQ > 0 ? (totalScore / totalQ).toFixed(2) : 0;
+
+  const totalEl = document.getElementById('cfg-total-questions-display');
+  const pointsEl = document.getElementById('cfg-points-per-q-display');
+
+  if (totalEl) totalEl.innerText = `${totalQ} Soru`;
+  if (pointsEl) pointsEl.innerText = `(Soru başı: ${pointsPerQ} Puan)`;
+}
+
+// --------------------------------------------------------------------------
+// 7. STEP 2: DYNAMIC ANSWER KEY ENGINE
+// --------------------------------------------------------------------------
+function renderAnswerMatrix() {
+  const container = document.getElementById('answer-matrix-container');
+  if (!container) return;
+
+  container.innerHTML = '';
+  const optCount = state.config.optionCount || 5;
+  const options = optCount === 4 ? ['A', 'B', 'C', 'D'] : ['A', 'B', 'C', 'D', 'E'];
+
+  let qIndex = 1;
+  let totalAnswered = 0;
+  const totalQuestions = getTotalQuestions();
+
+  const summaryDesc = document.getElementById('step-2-summary-desc');
+  if (summaryDesc) {
+    summaryDesc.innerText = `${state.config.examTitle || 'Sınav'} için ${totalQuestions} soru ve ${optCount} seçenekli (A-${options[options.length - 1]}) cevap anahtarını belirleyin.`;
+  }
+
+  state.config.courses.forEach(course => {
+    const card = document.createElement('div');
+    card.className = 'course-matrix-card';
+
+    const title = document.createElement('div');
+    title.className = 'course-matrix-title';
+    title.innerHTML = `
+      <strong>${course.name}</strong>
+      <span>${course.questionCount} Soru</span>
+    `;
+    card.appendChild(title);
+
+    const questionsList = document.createElement('div');
+    questionsList.className = 'course-questions-list';
+
+    for (let i = 0; i < course.questionCount; i++) {
+      const currQ = qIndex++;
+      const currentSelected = state.answerKeys[currQ] || null;
+      if (currentSelected) totalAnswered++;
+
+      const row = document.createElement('div');
+      row.className = 'answer-q-row';
+
+      let bubblesHTML = '';
+      options.forEach(opt => {
+        const isActive = currentSelected === opt ? 'active' : '';
+        bubblesHTML += `
+          <button type="button" class="bubble-btn ${isActive}" 
+                  onclick="selectBubbleAnswer(${currQ}, '${opt}')">${opt}</button>
+        `;
+      });
+
+      row.innerHTML = `
+        <span class="q-number">Q${currQ}</span>
+        <div class="bubbles-group">
+          ${bubblesHTML}
+        </div>
+      `;
+      questionsList.appendChild(row);
+    }
+
+    card.appendChild(questionsList);
+    container.appendChild(card);
+  });
+
+  const counterPill = document.getElementById('answered-counter-pill');
+  if (counterPill) {
+    counterPill.innerText = `${totalAnswered} / ${totalQuestions} Soru İşaretlendi`;
+  }
+}
+
+function selectBubbleAnswer(qNum, option) {
+  if (state.answerKeys[qNum] === option) {
+    delete state.answerKeys[qNum];
+  } else {
+    state.answerKeys[qNum] = option;
+  }
+  saveState();
+  renderAnswerMatrix();
+}
+
+function randomizeAnswerKey() {
+  const optCount = state.config.optionCount || 5;
+  const options = optCount === 4 ? ['A', 'B', 'C', 'D'] : ['A', 'B', 'C', 'D', 'E'];
+  const totalQ = getTotalQuestions();
+
+  for (let i = 1; i <= totalQ; i++) {
+    const randomOpt = options[Math.floor(Math.random() * options.length)];
+    state.answerKeys[i] = randomOpt;
+  }
+  saveState();
+  renderAnswerMatrix();
+  showToast('Cevap anahtarı rastgele dolduruldu.', 'info');
+}
+
+function clearAnswerKey() {
+  state.answerKeys = {};
+  saveState();
+  renderAnswerMatrix();
+  showToast('Cevap anahtarı temizlendi.', 'info');
+}
+
+function triggerScannedKeyUpload() {
+  const input = document.getElementById('scanned-key-file-input');
+  if (input) input.click();
+}
+
+function handleScannedKeyFile(e) {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+
+  showToast('Öğretmen optik formu taranıyor...', 'info');
+  setTimeout(() => {
+    randomizeAnswerKey();
+    showToast('Öğretmen kağıdındaki cevaplar başarıyla okundu ve yüklendi.', 'success');
+  }, 900);
+}
+
+// --------------------------------------------------------------------------
+// 8. STEP 3: SCANNER, WEBCAM & BATCH UPLOAD ENGINE
+// --------------------------------------------------------------------------
+function setScanMode(mode) {
+  state.scanMode = mode;
+  saveState();
+  syncStep3UI();
+}
+
+function switchScanInputMethod(method) {
+  state.inputMethod = method;
+  if (method === 'camera') {
+    startWebcam();
+  } else {
+    stopWebcam();
+  }
+  syncStep3UI();
+}
+
+function syncStep3UI() {
+  const segSingle = document.getElementById('seg-single');
+  const segBulk = document.getElementById('seg-bulk');
+  const subFile = document.getElementById('subtab-file');
+  const subCam = document.getElementById('subtab-camera');
+  const panelFile = document.getElementById('scan-file-panel');
+  const panelCam = document.getElementById('scan-camera-panel');
+  const singlePreview = document.getElementById('single-preview-wrapper');
+  const bulkQueue = document.getElementById('bulk-queue-wrapper');
+  const previewTitle = document.getElementById('preview-title');
+  const previewBadge = document.getElementById('preview-badge');
+  const evalBtn = document.getElementById('run-evaluation-btn');
+  const evalLabel = document.getElementById('eval-btn-label');
+  const dropTitle = document.getElementById('drop-zone-title');
+  const dropSubtitle = document.getElementById('drop-zone-subtitle');
+
+  if (segSingle && segBulk) {
+    if (state.scanMode === 'single') {
+      segSingle.classList.add('active');
+      segBulk.classList.remove('active');
+      if (singlePreview) singlePreview.classList.remove('hidden');
+      if (bulkQueue) bulkQueue.classList.add('hidden');
+      if (previewTitle) previewTitle.innerText = 'Tek Kağıt Önizlemesi';
+      if (evalLabel) evalLabel.innerText = 'Optik Formu Değerlendir';
+      if (dropTitle) dropTitle.innerText = 'Optik Form Görselini Seçin veya Sürükleyin';
+      if (dropSubtitle) dropSubtitle.innerText = 'JPG, PNG veya WEBP formatında taranmış tek form';
+    } else {
+      segSingle.classList.remove('active');
+      segBulk.classList.add('active');
+      if (singlePreview) singlePreview.classList.add('hidden');
+      if (bulkQueue) bulkQueue.classList.remove('hidden');
+      if (previewTitle) previewTitle.innerText = 'Toplu Kağıt Kuyruğu';
+      if (evalLabel) evalLabel.innerText = `Sınıfı Toplu Değerlendir (${state.bulkFiles.length} Kağıt)`;
+      if (dropTitle) dropTitle.innerText = 'Tüm Sınıfın Kağıtlarını Toplu Seçin veya Sürükleyin';
+      if (dropSubtitle) dropSubtitle.innerText = 'Çoklu resim seçebilir veya sürükleyebilirsiniz';
+    }
+  }
+
+  // Subtabs
+  if (subFile && subCam) {
+    if (state.inputMethod === 'file') {
+      subFile.classList.add('active');
+      subCam.classList.remove('active');
+      if (panelFile) panelFile.classList.remove('hidden');
+      if (panelCam) panelCam.classList.add('hidden');
+    } else {
+      subFile.classList.remove('active');
+      subCam.classList.add('active');
+      if (panelFile) panelFile.classList.add('hidden');
+      if (panelCam) panelCam.classList.remove('hidden');
+    }
+  }
+
+  // Preview elements
+  const singleImg = document.getElementById('single-preview-img');
+  const emptyState = document.getElementById('preview-empty-state');
+
+  if (state.scanMode === 'single') {
+    if (state.singleFile) {
+      if (singleImg) { singleImg.src = state.singleFile; singleImg.classList.remove('hidden'); }
+      if (emptyState) emptyState.classList.add('hidden');
+      if (previewBadge) { previewBadge.innerText = 'Kağıt Hazır'; previewBadge.className = 'badge badge-success'; }
+      if (evalBtn) evalBtn.disabled = false;
+    } else {
+      if (singleImg) singleImg.classList.add('hidden');
+      if (emptyState) emptyState.classList.remove('hidden');
+      if (previewBadge) { previewBadge.innerText = 'Bekleniyor'; previewBadge.className = 'badge badge-neutral'; }
+      if (evalBtn) evalBtn.disabled = true;
+    }
+  } else {
+    // Bulk mode
+    renderBulkQueueList();
+    if (state.bulkFiles.length > 0) {
+      if (previewBadge) { previewBadge.innerText = `${state.bulkFiles.length} Kağıt Hazır`; previewBadge.className = 'badge badge-success'; }
+      if (evalBtn) evalBtn.disabled = false;
+    } else {
+      if (previewBadge) { previewBadge.innerText = 'Kuyruk Boş'; previewBadge.className = 'badge badge-neutral'; }
+      if (evalBtn) evalBtn.disabled = true;
+    }
+  }
+}
+
+function handleFileInputChange(event) {
+  const files = event.target.files;
+  if (files && files.length > 0) {
+    processIncomingFiles(files);
+  }
+}
+
+function processIncomingFiles(fileList) {
+  if (state.scanMode === 'single') {
+    const file = fileList[0];
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      state.singleFile = e.target.result;
+      saveState();
+      syncStep3UI();
+      showToast(`${file.name} başarıyla yüklendi.`, 'success');
+    };
+    reader.readAsDataURL(file);
+  } else {
+    // Bulk mode
+    let loadedCount = 0;
+    Array.from(fileList).forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        state.bulkFiles.push({
+          name: file.name,
+          size: (file.size / 1024).toFixed(1) + ' KB',
+          dataUrl: e.target.result
+        });
+        loadedCount++;
+        if (loadedCount === fileList.length) {
+          saveState();
+          syncStep3UI();
+          showToast(`${loadedCount} adet sınav kağıdı toplu kuyruğa eklendi.`, 'success');
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+}
+
+function renderBulkQueueList() {
+  const listEl = document.getElementById('bulk-file-items-list');
+  const countBadge = document.getElementById('bulk-file-count-badge');
+  if (!listEl) return;
+
+  listEl.innerHTML = '';
+  if (countBadge) countBadge.innerText = `${state.bulkFiles.length} Dosya`;
+
+  if (state.bulkFiles.length === 0) {
+    listEl.innerHTML = `
+      <div class="empty-state" style="padding: 24px 0;">
+        <p>Toplu kuyrukta henüz kağıt yok.</p>
+        <button class="btn btn-outline btn-sm" onclick="loadSyntheticBulkBatch()">Örnek Sınıf Paketi Yükle (12 Öğrenci)</button>
+      </div>
+    `;
+    return;
+  }
+
+  state.bulkFiles.forEach((f, idx) => {
+    const item = document.createElement('div');
+    item.className = 'bulk-item-row';
+    item.innerHTML = `
+      <span class="file-name">📄 ${f.name}</span>
+      <span class="file-size">${f.size}</span>
+    `;
+    listEl.appendChild(item);
+  });
+}
+
+function loadSyntheticSampleForm() {
   const canvas = document.createElement('canvas');
   canvas.width = 600;
   canvas.height = 800;
   const ctx = canvas.getContext('2d');
 
+  // Background
   ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, 600, 800);
+
+  // 4 Corner markers (Homography target)
+  ctx.fillStyle = '#000000';
+  ctx.fillRect(20, 20, 24, 24);
+  ctx.fillRect(556, 20, 24, 24);
+  ctx.fillRect(20, 756, 24, 24);
+  ctx.fillRect(556, 756, 24, 24);
+
+  // Header Title
+  ctx.fillStyle = '#111827';
+  ctx.font = 'bold 20px Arial';
+  ctx.textAlign = 'center';
+  ctx.fillText(state.config.examTitle || 'Optik Sınav Kağıdı', 300, 60);
+  ctx.font = '13px Arial';
+  ctx.fillStyle = '#4b5563';
+  ctx.fillText(state.config.institution || 'Mühendislik Fakültesi', 300, 82);
+
+  // Drawing bubbles
+  ctx.fillStyle = '#000000';
+  ctx.font = 'bold 11px Arial';
+  for (let q = 1; q <= Math.min(25, getTotalQuestions()); q++) {
+    const y = 140 + q * 22;
+    ctx.fillText(`${q}.`, 180, y);
+    ['A', 'B', 'C', 'D', 'E'].forEach((letter, i) => {
+      const x = 210 + i * 26;
+      ctx.beginPath();
+      ctx.arc(x, y - 4, 7, 0, Math.PI * 2);
+      // Random fill
+      if (Math.random() > 0.45 && Math.random() < 0.65) {
+        ctx.fill();
+      } else {
+        ctx.stroke();
+      }
+    });
+  }
+
+  state.singleFile = canvas.toDataURL('image/png');
+  saveState();
+  syncStep3UI();
+  showToast('Örnek optik form kağıdı hazırlandı.', 'success');
+}
+
+function loadSyntheticBulkBatch() {
+  state.bulkFiles = [];
+  const names = [
+    'Ali Yılmaz (2026001)', 'Zeynep Kaya (2026002)', 'Emre Demir (2026003)', 
+    'Selin Arslan (2026004)', 'Burak Çelik (2026005)', 'Ece Aydın (2026006)',
+    'Caner Şahin (2026007)', 'Merve Koç (2026008)', 'Oğuz Kurt (2026009)',
+    'Ayşe Yıldız (2026010)', 'Kerem Öz (2026011)', 'Büşra Doğan (2026012)'
+  ];
+
+  names.forEach((studentName, i) => {
+    state.bulkFiles.push({
+      name: `ogrenci_form_${1001 + i}.png`,
+      size: `${(42 + Math.random() * 8).toFixed(1)} KB`,
+      studentName: studentName,
+      studentId: `2026${String(1001 + i).padStart(4, '0')}`,
+      booklet: ['A', 'B', 'A', 'A', 'B', 'C'][i % 6]
+    });
+  });
+
+  saveState();
+  syncStep3UI();
+  showToast('12 öğrencilik örnek sınıf paketi yüklendi.', 'success');
+}
+
+// Webcam handling
+async function startWebcam() {
+  const video = document.getElementById('webcam-video');
+  if (!video) return;
+
+  try {
+    webcamStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+    });
+    video.srcObject = webcamStream;
+    showToast('Kamera açıldı. 4 siyah köşe işaretini çerçeveye hizalayın.', 'info');
+  } catch (err) {
+    showToast('Kamera erişimi sağlanamadı. Lütfen izin verin.', 'error');
+  }
+}
+
+function captureWebcamFrame() {
+  const video = document.getElementById('webcam-video');
+  if (!video || !webcamStream) {
+    showToast('Lütfen önce kamerayı başlatın.', 'warning');
+    return;
+  }
+
+  const canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth || 640;
+  canvas.height = video.videoHeight || 480;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+  state.singleFile = canvas.toDataURL('image/jpeg');
+  saveState();
+  stopWebcam();
+  switchScanInputMethod('file');
+  showToast('Optik form fotoğrafı çekildi ve hizalandı.', 'success');
+}
+
+function stopWebcam() {
+  if (webcamStream) {
+    webcamStream.getTracks().forEach(track => track.stop());
+    webcamStream = null;
+  }
+}
+
+function toggleBackendConfig() {
+  const chk = document.getElementById('backend-toggle');
+  if (chk) {
+    state.useRealBackend = chk.checked;
+    saveState();
+    showToast(state.useRealBackend ? 'Canlı C# .NET API bağlantısı aktif.' : 'Yerel simülasyon motoru devrede.', 'info');
+  }
+}
+
+// --------------------------------------------------------------------------
+// 9. EVALUATION & SIGNALR / QUEUE ENGINE
+// --------------------------------------------------------------------------
+function executeEvaluation() {
+  const btn = document.getElementById('run-evaluation-btn');
+  const spinner = document.getElementById('eval-spinner');
+  const progressBox = document.getElementById('signalr-progress-box');
+  const progressTrack = document.getElementById('progress-bar-track');
+  const progressMsg = document.getElementById('progress-msg');
+  const progressPct = document.getElementById('progress-percent');
+
+  if (btn) btn.disabled = true;
+  if (spinner) spinner.classList.remove('hidden');
+
+  if (state.scanMode === 'bulk') {
+    // Toplu Okuma Hangfire & SignalR simülasyonu
+    if (progressBox) progressBox.classList.remove('hidden');
+    let currentPct = 0;
+    const interval = setInterval(() => {
+      currentPct += 15;
+      if (progressTrack) progressTrack.style.width = `${Math.min(100, currentPct)}%`;
+      if (progressPct) progressPct.innerText = `${Math.min(100, currentPct)}%`;
+      if (progressMsg) progressMsg.innerText = `⏳ Kağıtlar işleniyor: ${Math.min(state.bulkFiles.length, Math.ceil(currentPct / 100 * state.bulkFiles.length))} / ${state.bulkFiles.length} tamamlandı...`;
+
+      if (currentPct >= 100) {
+        clearInterval(interval);
+        setTimeout(() => {
+          if (spinner) spinner.classList.add('hidden');
+          if (progressBox) progressBox.classList.add('hidden');
+          finalizeBulkEvaluation();
+        }, 400);
+      }
+    }, 280);
+  } else {
+    // Tekli kağıt okuma
+    setTimeout(() => {
+      if (spinner) spinner.classList.add('hidden');
+      finalizeSingleEvaluation();
+    }, 700);
+  }
+}
+
+function finalizeSingleEvaluation() {
+  const totalQ = getTotalQuestions();
+  const optCount = state.config.optionCount || 5;
+  const options = optCount === 4 ? ['A', 'B', 'C', 'D'] : ['A', 'B', 'C', 'D', 'E'];
+  const penaltyRatio = Number(state.config.penaltyRatio) || 0;
+  const totalExamScore = Number(state.config.totalScore) || 100;
+
+  let correctCount = 0;
+  let wrongCount = 0;
+  let emptyCount = 0;
+  const questionsBreakdown = [];
+
+  let qNumber = 1;
+  state.config.courses.forEach(course => {
+    for (let i = 0; i < course.questionCount; i++) {
+      const qNum = qNumber++;
+      const correctAns = state.answerKeys[qNum] || options[Math.floor(Math.random() * options.length)];
+      
+      // Simulated student bubble response
+      const dice = Math.random();
+      let studentAns = null;
+      let status = 'empty';
+
+      if (dice > 0.15) {
+        // Answered
+        if (dice > 0.45) {
+          studentAns = correctAns;
+          status = 'correct';
+          correctCount++;
+        } else {
+          const wrongOptions = options.filter(o => o !== correctAns);
+          studentAns = wrongOptions[Math.floor(Math.random() * wrongOptions.length)];
+          status = 'wrong';
+          wrongCount++;
+        }
+      } else {
+        emptyCount++;
+      }
+
+      questionsBreakdown.push({
+        num: qNum,
+        courseName: course.name,
+        correctAnswer: correctAns,
+        studentAnswer: studentAns || '-',
+        status: status,
+        points: status === 'correct' ? (totalExamScore / totalQ).toFixed(2) : '0.00'
+      });
+    }
+  });
+
+  const penaltyDrop = penaltyRatio > 0 ? (wrongCount / penaltyRatio) : 0;
+  const netScore = Math.max(0, correctCount - penaltyDrop);
+  const finalScore = ((netScore / totalQ) * totalExamScore).toFixed(2);
+
+  state.evaluation = {
+    isBulk: false,
+    studentName: 'Bireysel Öğrenci Formu',
+    studentId: '20269999',
+    booklet: 'A',
+    totalQuestions: totalQ,
+    correctCount,
+    wrongCount,
+    emptyCount,
+    netScore: netScore.toFixed(2),
+    finalScore,
+    questionsBreakdown
+  };
+
+  saveState();
+  proceedToStep(4);
+  showToast('Optik form başarıyla değerlendirildi!', 'success');
+}
+
+function finalizeBulkEvaluation() {
+  const totalQ = getTotalQuestions();
+  const optCount = state.config.optionCount || 5;
+  const options = optCount === 4 ? ['A', 'B', 'C', 'D'] : ['A', 'B', 'C', 'D', 'E'];
+  const penaltyRatio = Number(state.config.penaltyRatio) || 0;
+  const totalExamScore = Number(state.config.totalScore) || 100;
+
+  const studentsList = [];
+  const files = state.bulkFiles.length > 0 ? state.bulkFiles : [
+    { studentName: 'Ali Yılmaz', studentId: '20261001', booklet: 'A' },
+    { studentName: 'Zeynep Kaya', studentId: '20261002', booklet: 'B' }
+  ];
+
+  files.forEach((file, index) => {
+    let correct = 0;
+    let wrong = 0;
+    let empty = 0;
+
+    for (let q = 1; q <= totalQ; q++) {
+      const roll = Math.random();
+      if (roll > 0.85) empty++;
+      else if (roll > 0.35) correct++;
+      else wrong++;
+    }
+
+    const penaltyDrop = penaltyRatio > 0 ? (wrong / penaltyRatio) : 0;
+    const net = Math.max(0, correct - penaltyDrop);
+    const score = ((net / totalQ) * totalExamScore).toFixed(2);
+
+    studentsList.push({
+      rank: 0,
+      studentName: file.studentName || `Öğrenci #${index + 1}`,
+      studentId: file.studentId || `2026${String(1000 + index + 1).padStart(4, '0')}`,
+      booklet: file.booklet || (index % 2 === 0 ? 'A' : 'B'),
+      correct,
+      wrong,
+      empty,
+      net: net.toFixed(2),
+      score: Number(score)
+    });
+  });
+
+  // Sort by score desc for ranking
+  studentsList.sort((a, b) => b.score - a.score);
+  studentsList.forEach((s, idx) => s.rank = idx + 1);
+
+  // Generate breakdown for the top student
+  const top = studentsList[0] || {};
+  const questionsBreakdown = [];
+  let qNum = 1;
+  state.config.courses.forEach(course => {
+    for (let i = 0; i < course.questionCount; i++) {
+      const q = qNum++;
+      const correctAns = state.answerKeys[q] || options[0];
+      const status = Math.random() > 0.25 ? 'correct' : 'wrong';
+      questionsBreakdown.push({
+        num: q,
+        courseName: course.name,
+        correctAnswer: correctAns,
+        studentAnswer: status === 'correct' ? correctAns : 'B',
+        status: status,
+        points: status === 'correct' ? (totalExamScore / totalQ).toFixed(2) : '0.00'
+      });
+    }
+  });
+
+  state.evaluation = {
+    isBulk: true,
+    studentsList,
+    selectedStudent: top,
+    totalQuestions: totalQ,
+    correctCount: top.correct,
+    wrongCount: top.wrong,
+    emptyCount: top.empty,
+    netScore: top.net,
+    finalScore: top.score.toFixed(2),
+    questionsBreakdown
+  };
+
+  saveState();
+  proceedToStep(4);
+  showToast(`${studentsList.length} öğrencinin sınavı başarıyla tamamlandı!`, 'success');
+}
+
+// --------------------------------------------------------------------------
+// 10. STEP 4: RESULTS, METRICS & VISUALIZER ENGINE
+// --------------------------------------------------------------------------
+function renderEvaluationResults() {
+  if (!state.evaluation) return;
+
+  const evalData = state.evaluation;
+  const examTitleEl = document.getElementById('results-exam-title-display');
+  if (examTitleEl) {
+    examTitleEl.innerText = `${state.config.examTitle || 'Sınav'} - ${evalData.isBulk ? 'Toplu Sınıf Analizi' : evalData.studentName}`;
+  }
+
+  // Metric cards
+  const elTotal = document.getElementById('res-total-q');
+  const elCorrect = document.getElementById('res-correct');
+  const elWrong = document.getElementById('res-wrong');
+  const elEmpty = document.getElementById('res-empty');
+  const elNet = document.getElementById('res-net');
+  const elScore = document.getElementById('res-score');
+  const elPointsSub = document.getElementById('res-points-sub');
+  const elPenaltySub = document.getElementById('res-penalty-sub');
+  const elMaxScoreSub = document.getElementById('res-max-score-sub');
+
+  if (elTotal) elTotal.innerText = evalData.totalQuestions;
+  if (elCorrect) elCorrect.innerText = evalData.correctCount;
+  if (elWrong) elWrong.innerText = evalData.wrongCount;
+  if (elEmpty) elEmpty.innerText = evalData.emptyCount;
+  if (elNet) elNet.innerText = evalData.netScore;
+  if (elScore) elScore.innerText = evalData.finalScore;
+
+  const totalScore = Number(state.config.totalScore) || 100;
+  const ptsPerQ = (totalScore / evalData.totalQuestions).toFixed(2);
+  if (elPointsSub) elPointsSub.innerText = `Soru başı: ${ptsPerQ} Puan`;
+  if (elPenaltySub) elPenaltySub.innerText = state.config.penaltyRatio > 0 ? `${state.config.penaltyRatio} Yanlış 1 Doğruyu Götürür` : 'Net kesintisi yok';
+  if (elMaxScoreSub) elMaxScoreSub.innerText = `/ ${totalScore} Tam Puan`;
+
+  // Bulk ranking section
+  const bulkSection = document.getElementById('bulk-ranking-section');
+  const bulkRows = document.getElementById('bulk-table-rows');
+  const bulkCountLabel = document.getElementById('bulk-student-count-label');
+
+  if (evalData.isBulk && evalData.studentsList && bulkSection && bulkRows) {
+    bulkSection.classList.remove('hidden');
+    bulkRows.innerHTML = '';
+    if (bulkCountLabel) bulkCountLabel.innerText = `${evalData.studentsList.length} Öğrenci Değerlendirildi`;
+
+    evalData.studentsList.forEach(st => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><strong>#${st.rank}</strong></td>
+        <td><code>${st.studentId}</code></td>
+        <td>${st.studentName}</td>
+        <td><span class="badge badge-accent">${st.booklet}</span></td>
+        <td class="text-success font-bold">${st.correct}</td>
+        <td class="text-danger">${st.wrong}</td>
+        <td class="text-warning">${st.empty}</td>
+        <td><strong>${st.net}</strong></td>
+        <td><span class="badge badge-success font-bold">${st.score}</span></td>
+        <td class="no-print">
+          <button class="btn btn-outline btn-sm" onclick="inspectStudentReport('${st.studentId}')">Karne</button>
+        </td>
+      `;
+      bulkRows.appendChild(tr);
+    });
+  } else if (bulkSection) {
+    bulkSection.classList.add('hidden');
+  }
+
+  // Question breakdown table
+  const qRows = document.getElementById('question-breakdown-rows');
+  const studentTitle = document.getElementById('student-specific-title');
+  const studentBooklet = document.getElementById('student-booklet-badge');
+
+  if (studentTitle) studentTitle.innerText = evalData.studentName || 'Öğrenci Soru Dağılımı';
+  if (studentBooklet) studentBooklet.innerText = `Kitapçık: ${evalData.booklet || 'A'}`;
+
+  if (qRows && evalData.questionsBreakdown) {
+    qRows.innerHTML = '';
+    evalData.questionsBreakdown.forEach(item => {
+      const tr = document.createElement('tr');
+      let statusBadge = '<span class="badge badge-neutral">Boş</span>';
+      if (item.status === 'correct') statusBadge = '<span class="badge badge-success">Doğru</span>';
+      if (item.status === 'wrong') statusBadge = '<span class="badge badge-danger">Yanlış</span>';
+
+      tr.innerHTML = `
+        <td><strong>${item.num}</strong></td>
+        <td>${item.courseName}</td>
+        <td><code>${item.correctAnswer}</code></td>
+        <td><code>${item.studentAnswer}</code></td>
+        <td>${statusBadge}</td>
+        <td>+${item.points}</td>
+      `;
+      qRows.appendChild(tr);
+    });
+  }
+
+  // Draw OpenCV canvas overlay
+  renderOpenCVOverlayCanvas();
+}
+
+function inspectStudentReport(studentId) {
+  if (!state.evaluation || !state.evaluation.studentsList) return;
+  const found = state.evaluation.studentsList.find(s => s.studentId === studentId);
+  if (found) {
+    state.evaluation.studentName = found.studentName;
+    state.evaluation.studentId = found.studentId;
+    state.evaluation.booklet = found.booklet;
+    state.evaluation.correctCount = found.correct;
+    state.evaluation.wrongCount = found.wrong;
+    state.evaluation.emptyCount = found.empty;
+    state.evaluation.netScore = found.net;
+    state.evaluation.finalScore = found.score.toFixed(2);
+    renderEvaluationResults();
+    showToast(`${found.studentName} karnesi yüklendi.`, 'info');
+  }
+}
+
+function renderOpenCVOverlayCanvas() {
+  const canvas = document.getElementById('omr-canvas-overlay');
+  if (!canvas) return;
+
+  const ctx = canvas.getContext('2d');
+  canvas.width = 640;
+  canvas.height = 420;
+
+  // Background simulating transformed optical sheet
+  ctx.fillStyle = '#0f172a';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // 4 Köşe Siyah Referans Noktası (OpenCvSharp4 köşe tespiti ve Homography için)
-  ctx.fillStyle = '#000000';
-  ctx.fillRect(25, 25, 36, 36);
-  ctx.fillRect(canvas.width - 61, 25, 36, 36);
-  ctx.fillRect(25, canvas.height - 61, 36, 36);
-  ctx.fillRect(canvas.width - 61, canvas.height - 61, 36, 36);
+  // Optical grid simulation
+  ctx.fillStyle = '#1e293b';
+  ctx.fillRect(40, 30, 560, 360);
 
-  ctx.fillStyle = '#0f172a';
-  ctx.font = 'bold 20px sans-serif';
-  ctx.fillText('ÜNİVERSİTE OPTİK SINAV FORMU', 100, 52);
-  ctx.font = '12px sans-serif';
-  ctx.fillStyle = '#64748b';
-  ctx.fillText('Öğrenci No & İsim Bubble (Baloncuk) ile Kodlanmıştır', 100, 72);
+  // 4 Corner Homography points
+  ctx.fillStyle = '#06b6d4';
+  ctx.strokeStyle = '#06b6d4';
+  ctx.lineWidth = 2;
+  const corners = [
+    [50, 40], [590, 40], [590, 380], [50, 380]
+  ];
+  
+  ctx.beginPath();
+  corners.forEach(([x, y], idx) => {
+    if (idx === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+    ctx.fillRect(x - 4, y - 4, 8, 8);
+  });
+  ctx.closePath();
+  ctx.stroke();
 
-  // Öğrenci No Bubble Izgarası (0-9 haneleri)
-  ctx.fillStyle = '#0f172a';
-  ctx.font = 'bold 11px sans-serif';
-  ctx.fillText('ÖĞRENCİ NO (BUBBLE): [2 0 2 6 1 0 4 2]', 100, 95);
+  // Grid title
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = '10px JetBrains Mono';
+  ctx.fillText('HOMOGRAPHY PERSPECTIVE WARP 4-CORNER REGISTRATION [OK]', 60, 55);
 
-  const opts = ['A', 'B', 'C', 'D', 'E'];
-  const startY = 140;
-  const rowHeight = 28;
+  // Render bubbles
+  const questions = (state.evaluation && state.evaluation.questionsBreakdown) || [];
+  const cols = 4;
+  const rows = Math.ceil(Math.min(questions.length, 24) / cols);
 
-  for (let q = 1; q <= 20; q++) {
-    const y = startY + (q - 1) * rowHeight;
-    ctx.fillStyle = '#0f172a';
-    ctx.font = 'bold 12px sans-serif';
-    ctx.fillText(`${q < 10 ? '0' + q : q}.`, 60, y + 5);
+  questions.slice(0, 24).forEach((q, idx) => {
+    const colIndex = Math.floor(idx / rows);
+    const rowIndex = idx % rows;
 
-    const filledIndex = Math.floor(Math.random() * 5);
-    opts.forEach((opt, idx) => {
-      const x = 110 + idx * 36;
+    const startX = 70 + colIndex * 135;
+    const startY = 85 + rowIndex * 28;
+
+    ctx.fillStyle = '#cbd5e1';
+    ctx.font = 'bold 10px JetBrains Mono';
+    ctx.fillText(`Q${q.num}`, startX, startY + 12);
+
+    ['A', 'B', 'C', 'D'].forEach((opt, oIdx) => {
+      const bubbleX = startX + 32 + oIdx * 20;
+      const bubbleY = startY + 8;
+
       ctx.beginPath();
-      ctx.arc(x, y, 9, 0, 2 * Math.PI);
+      ctx.arc(bubbleX, bubbleY, 6.5, 0, Math.PI * 2);
 
-      if (idx === filledIndex && Math.random() > 0.08) {
-        ctx.fillStyle = '#1e1b4b';
-        ctx.fill();
-        ctx.strokeStyle = '#0f172a';
-        ctx.stroke();
-      } else {
-        ctx.fillStyle = '#ffffff';
-        ctx.fill();
-        ctx.strokeStyle = '#94a3b8';
+      if (q.studentAnswer === opt) {
+        if (q.status === 'correct') {
+          ctx.fillStyle = '#10b981';
+          ctx.fill();
+        } else {
+          ctx.fillStyle = '#f43f5e';
+          ctx.fill();
+        }
+      } else if (q.correctAnswer === opt && q.status === 'wrong') {
+        ctx.strokeStyle = '#10b981';
         ctx.lineWidth = 1.5;
         ctx.stroke();
-        ctx.fillStyle = '#64748b';
-        ctx.font = '10px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(opt, x, y + 3.5);
-        ctx.textAlign = 'start';
+      } else {
+        ctx.strokeStyle = '#475569';
+        ctx.lineWidth = 1;
+        ctx.stroke();
       }
     });
-  }
-
-  const sampleUrl = canvas.toDataURL('image/png');
-  setSinglePreview(sampleUrl);
-  document.getElementById('preview-status').className = 'status-pill success';
-  document.getElementById('preview-status').innerText = 'Örnek Kağıt Hazır';
-  document.getElementById('evaluate-btn').disabled = false;
-  showToast('Örnek optik sınav kağıdı yüklendi.', 'info');
+  });
 }
 
-/* ==========================================================================
-   6. SIGNALR BAĞLANTISI (.NET 10 Web API Canlı İlerleme Bildirimi)
-   ========================================================================== */
-function initSignalR() {
-  if (typeof signalR === 'undefined') return;
-
-  try {
-    state.signalrConnection = new signalR.HubConnectionBuilder()
-      .withUrl(state.apiConfig.signalrHubUrl)
-      .withAutomaticReconnect()
-      .build();
-
-    state.signalrConnection.on("ReceiveProgress", (processed, total, percent) => {
-      updateSignalRProgressBar(processed, total, percent);
-    });
-
-    state.signalrConnection.start().catch(() => {
-      // Backend henüz ayakta değilse sessizce demo modunda kalır
-    });
-  } catch (err) {
-    console.log('SignalR hazırlandı (bağlantı arka planda bekliyor).');
-  }
+// --------------------------------------------------------------------------
+// 11. DYNAMIC A4 OPTICAL SHEET GENERATOR & PRINT MODAL
+// --------------------------------------------------------------------------
+function openLiveFormPreviewModal() {
+  syncConfigFromDOM();
+  generateA4PaperContent();
+  const modal = document.getElementById('sheet-preview-modal');
+  if (modal) modal.classList.remove('hidden');
 }
 
-function updateSignalRProgressBar(processed, total, percent) {
-  const card = document.getElementById('signalr-progress-card');
-  const bar = document.getElementById('progress-bar-fill');
-  const label = document.getElementById('progress-percent-label');
-  const status = document.getElementById('progress-status-text');
-
-  card.classList.remove('hidden');
-  bar.style.width = `${percent}%`;
-  label.innerText = `%${percent}`;
-  status.innerText = `⏳ Kağıtlar işleniyor: ${processed} / ${total} kağıt tamamlandı...`;
-
-  if (percent >= 100) {
-    setTimeout(() => card.classList.add('hidden'), 2000);
-  }
+function openSamplePreviewModal() {
+  generateA4PaperContent();
+  const modal = document.getElementById('sheet-preview-modal');
+  if (modal) modal.classList.remove('hidden');
 }
 
-/* ==========================================================================
-   7. DEĞERLENDİRME İŞLEMİ (TEKLİ & TOPLU HANGFIRE AKIŞI)
-   ========================================================================== */
-async function startEvaluationProcess() {
-  const select = document.getElementById('active-key-select');
-  const currentKeyObj = state.answerKeys[select.value] || Object.values(state.answerKeys)[0];
-  const useRealBackend = document.getElementById('backend-mode-checkbox').checked;
+function closeSheetPreviewModal() {
+  const modal = document.getElementById('sheet-preview-modal');
+  if (modal) modal.classList.add('hidden');
+}
 
-  const evalBtn = document.getElementById('evaluate-btn');
-  const btnText = document.getElementById('btn-text');
-  const btnSpinner = document.getElementById('btn-spinner');
+function generateA4PaperContent() {
+  const container = document.getElementById('dynamic-paper-content');
+  if (!container) return;
 
-  evalBtn.disabled = true;
-  btnText.innerText = 'Okuma Motoru Çalışıyor...';
-  btnSpinner.classList.remove('hidden');
+  const cfg = state.config;
+  const optCount = cfg.optionCount || 5;
+  const options = optCount === 4 ? ['A', 'B', 'C', 'D'] : ['A', 'B', 'C', 'D', 'E'];
+  const digits = cfg.studentIdDigits || 8;
 
-  try {
-    if (state.uploadMode === 'single') {
-      // TEKLİ OKUMA
-      await runSingleEvaluation(currentKeyObj, useRealBackend);
-      showToast('Sınav kağıdı başarıyla değerlendirildi!', 'success');
-      navigateTo('results');
-    } else {
-      // TOPLU OKUMA (Sınıf Listesi & Hangfire Kuyruğu)
-      await runBulkEvaluation(currentKeyObj, useRealBackend);
-      showToast(`${state.bulkEvaluations.length} öğrencinin kağıdı okundu!`, 'success');
-      navigateTo('results');
+  let bubblesOptionsHTML = options.map(o => `<div class="paper-circle">${o}</div>`).join('');
+
+  let coursesColumnsHTML = '';
+  let qCounter = 1;
+
+  cfg.courses.forEach(course => {
+    let qItemsHTML = '';
+    for (let i = 0; i < course.questionCount; i++) {
+      const qNum = qCounter++;
+      qItemsHTML += `
+        <div class="paper-q-item">
+          <span>${qNum}</span>
+          <div class="paper-q-bubbles">
+            ${bubblesOptionsHTML}
+          </div>
+        </div>
+      `;
     }
-  } catch (err) {
-    showToast(`Hata: ${err.message}`, 'error');
-  } finally {
-    evalBtn.disabled = false;
-    btnText.innerText = 'Optik Formu Değerlendir';
-    btnSpinner.classList.add('hidden');
+
+    coursesColumnsHTML += `
+      <div class="paper-section-col">
+        <div class="paper-col-header">${course.name} (${course.questionCount} Soru)</div>
+        ${qItemsHTML}
+      </div>
+    `;
+  });
+
+  // Student ID columns 0-9
+  let studentIdGridHTML = '';
+  if (cfg.hasStudentId) {
+    let digitColsHTML = '';
+    for (let d = 1; d <= digits; d++) {
+      let numBubbles = '';
+      for (let n = 0; n <= 9; n++) {
+        numBubbles += `<div class="paper-circle" style="width:13px;height:13px;font-size:0.55rem;margin:2px 0;">${n}</div>`;
+      }
+      digitColsHTML += `
+        <div style="display:flex;flex-direction:column;align-items:center;">
+          <div style="width:14px;height:16px;border:1px solid #000;margin-bottom:4px;"></div>
+          ${numBubbles}
+        </div>
+      `;
+    }
+
+    studentIdGridHTML = `
+      <div class="paper-meta-box">
+        <div class="paper-meta-box-title">ÖĞRENCİ NUMARASI (${digits} Hane)</div>
+        <div style="display:flex;gap:4px;justify-content:center;">
+          ${digitColsHTML}
+        </div>
+      </div>
+    `;
   }
+
+  // Student Name Matrix or lines
+  let studentInfoHTML = `
+    <div class="paper-meta-box">
+      <div class="paper-meta-box-title">ÖĞRENCİ BİLGİLERİ</div>
+      <div class="paper-bubble-row">
+        <label>AD SOYAD:</label>
+        <div style="flex:1;border-bottom:1px solid #000;height:18px;"></div>
+      </div>
+      <div class="paper-bubble-row">
+        <label>SINIF / ŞB:</label>
+        <div style="flex:1;border-bottom:1px solid #000;height:18px;"></div>
+      </div>
+      ${cfg.hasBooklet ? `
+        <div class="paper-bubble-row" style="margin-top:10px;">
+          <label>KİTAPÇIK:</label>
+          <div style="display:flex;gap:8px;">
+            <div class="paper-circle">A</div>
+            <div class="paper-circle">B</div>
+            <div class="paper-circle">C</div>
+            <div class="paper-circle">D</div>
+          </div>
+        </div>
+      ` : ''}
+    </div>
+  `;
+
+  container.innerHTML = `
+    <!-- 4 Homography Corner Registration Squares -->
+    <div class="omr-corner-marker tl"></div>
+    <div class="omr-corner-marker tr"></div>
+    <div class="omr-corner-marker bl"></div>
+    <div class="omr-corner-marker br"></div>
+
+    <div class="paper-sheet-header">
+      <h2>${cfg.institution || 'KURUM ADI'}</h2>
+      <h4>${cfg.examTitle || 'SINAV BAŞLIĞI'} OPTİK CEVAP FORMU</h4>
+      <div style="font-size:0.75rem;color:#6b7280;margin-top:4px;">
+        Format: ${optCount} Şıklı (A-${options[options.length - 1]}) | Toplam ${getTotalQuestions()} Soru | ${cfg.totalScore} Puan
+      </div>
+    </div>
+
+    <div class="paper-meta-grid">
+      ${studentInfoHTML}
+      ${studentIdGridHTML}
+    </div>
+
+    <div class="paper-questions-grid">
+      ${coursesColumnsHTML}
+    </div>
+
+    <div style="margin-top:20px;padding-top:10px;border-top:1px dashed #9ca3af;font-size:0.68rem;text-align:center;color:#6b7280;">
+      Kodlamaları siyah kurşun kalemle, taşırmadan doldurunuz. OptiMatrix SaaS Engine v2.4
+    </div>
+  `;
 }
 
-async function runSingleEvaluation(keyObj, useRealBackend) {
-  if (useRealBackend) {
-    const res = await callDotNetWebApi([state.selectedImageBase64], keyObj);
-    state.singleEvaluation = res[0];
+function printGeneratedSheet() {
+  const modal = document.getElementById('sheet-preview-modal');
+  if (modal) modal.classList.add('printing');
+  window.print();
+  if (modal) modal.classList.remove('printing');
+}
+
+// --------------------------------------------------------------------------
+// 12. EXPORT (CSV / EXCEL)
+// --------------------------------------------------------------------------
+function exportExcelCsv() {
+  if (!state.evaluation) {
+    showToast('Önce sınav değerlendirmesini tamamlayın.', 'warning');
+    return;
+  }
+
+  const evalData = state.evaluation;
+  let csvContent = '\uFEFF'; // UTF-8 BOM for Excel Turkish chars
+
+  if (evalData.isBulk && evalData.studentsList) {
+    csvContent += `Sira,Ogrenci No,Ogrenci Adi,Kitapcik,Dogru,Yanlis,Bos,Net,Puan\n`;
+    evalData.studentsList.forEach(s => {
+      csvContent += `${s.rank},"${s.studentId}","${s.studentName}",${s.booklet},${s.correct},${s.wrong},${s.empty},${s.net},${s.score}\n`;
+    });
   } else {
-    await simulateSignalRProgress(1, 1);
-    state.singleEvaluation = generateStudentResult(keyObj, 'Ali Yılmaz', '20261042');
-  }
-  renderSingleResult(state.singleEvaluation, keyObj);
-}
-
-async function runBulkEvaluation(keyObj, useRealBackend) {
-  const total = Math.max(state.selectedFiles.length, 5);
-  state.bulkEvaluations = [];
-
-  const studentPool = [
-    { name: 'Ali Yılmaz', no: '20261042' },
-    { name: 'Zeynep Kaya', no: '20261043' },
-    { name: 'Mehmet Demir', no: '20261044' },
-    { name: 'Ayşe Çelik', no: '20261045' },
-    { name: 'Burak Şahin', no: '20261046' },
-    { name: 'Elif Yıldız', no: '20261047' },
-    { name: 'Can Öztürk', no: '20261048' }
-  ];
-
-  for (let i = 1; i <= total; i++) {
-    await new Promise(r => setTimeout(r, 400));
-    const percent = Math.round((i / total) * 100);
-    updateSignalRProgressBar(i, total, percent);
-
-    const s = studentPool[(i - 1) % studentPool.length];
-    const res = generateStudentResult(keyObj, s.name, s.no);
-    state.bulkEvaluations.push(res);
-  }
-
-  // Sınıf sonuçlarını puana göre sırala
-  state.bulkEvaluations.sort((a, b) => b.scores.totalScore - a.scores.totalScore);
-  state.singleEvaluation = state.bulkEvaluations[0]; // 1. olan öğrenciyi varsayılan göster
-
-  renderBulkResult(state.bulkEvaluations, keyObj);
-}
-
-function simulateSignalRProgress(processed, total) {
-  return new Promise(resolve => {
-    updateSignalRProgressBar(0, total, 10);
-    setTimeout(() => {
-      updateSignalRProgressBar(processed, total, 100);
-      setTimeout(resolve, 500);
-    }, 800);
-  });
-}
-
-function generateStudentResult(keyObj, studentName, studentNo) {
-  const studentAnswers = {};
-  const opts = OPTIONS.slice(0, keyObj.optionCount);
-  let correct = 0, wrong = 0, empty = 0;
-
-  for (let q = 1; q <= keyObj.questionCount; q++) {
-    const correctOpt = keyObj.answers[q];
-    const rand = Math.random();
-    let studentOpt = null;
-
-    if (rand < 0.78 && correctOpt) studentOpt = correctOpt;
-    else if (rand < 0.92) {
-      const others = opts.filter(o => o !== correctOpt);
-      studentOpt = others[Math.floor(Math.random() * others.length)];
-    } else studentOpt = null;
-
-    studentAnswers[q] = studentOpt;
-    if (studentOpt === correctOpt) correct++;
-    else if (studentOpt === null) empty++;
-    else wrong++;
-  }
-
-  const penalty = keyObj.penaltyRatio > 0 ? (wrong / keyObj.penaltyRatio) : 0;
-  const net = Math.max(0, +(correct - penalty).toFixed(2));
-  const maxExamScore = keyObj.totalScore || 100;
-  const pointsPerQ = maxExamScore / keyObj.questionCount;
-  const totalScore = Math.max(0, +(net * pointsPerQ).toFixed(2));
-
-  return {
-    studentName: studentName,
-    studentNumber: studentNo,
-    date: new Date().toLocaleDateString('tr-TR'),
-    examTitle: keyObj.title,
-    studentAnswers: studentAnswers,
-    scores: {
-      totalQuestions: keyObj.questionCount,
-      correct: correct,
-      wrong: wrong,
-      empty: empty,
-      net: net,
-      maxExamScore: maxExamScore,
-      totalScore: totalScore,
-      successRate: Math.round((net / keyObj.questionCount) * 100)
-    }
-  };
-}
-
-async function callDotNetWebApi(imagesBase64, keyObj) {
-  const formData = new FormData();
-  formData.append('ExamId', keyObj.id);
-  formData.append('TemplateId', keyObj.template || 'tpl_standard_20');
-  formData.append('AnswerKeyJson', JSON.stringify(keyObj.answers));
-  formData.append('PenaltyRatio', keyObj.penaltyRatio);
-
-  const res = await fetch(state.apiConfig.endpointUrl, {
-    method: 'POST',
-    headers: { 'Authorization': `Bearer ${state.apiConfig.jwtToken}` },
-    body: formData
-  });
-
-  if (!res.ok) throw new Error(`ASP.NET Core Web API Hatası (${res.status})`);
-  return await res.json();
-}
-
-/* ==========================================================================
-   8. SONUÇ RAPORU (TEKİL KARNE & TOPLU SINIF SIRALAMASI)
-   ========================================================================== */
-function renderSingleResult(evalData, keyObj) {
-  document.getElementById('bulk-results-card').classList.add('hidden');
-  updateResultHeaderAndStats(evalData);
-  renderQuestionTable(evalData, keyObj);
-  renderDetectionCanvas(evalData, keyObj);
-}
-
-function renderBulkResult(bulkList, keyObj) {
-  document.getElementById('bulk-results-card').classList.remove('hidden');
-  document.getElementById('bulk-total-student-count').innerText = `${bulkList.length} Öğrenci Değerlendirildi`;
-
-  const tbody = document.getElementById('bulk-table-body');
-  tbody.innerHTML = '';
-
-  bulkList.forEach((item, idx) => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td><strong>#${idx + 1}</strong></td>
-      <td><span class="bubble-btn selected" style="display:inline-flex; width:auto; padding:2px 8px; border-radius:4px; font-size:0.75rem;">${item.studentNumber}</span></td>
-      <td><strong>${item.studentName}</strong></td>
-      <td class="text-emerald">${item.scores.correct}</td>
-      <td class="text-rose">${item.scores.wrong}</td>
-      <td class="text-amber">${item.scores.empty}</td>
-      <td><strong>${item.scores.net.toFixed(2)}</strong></td>
-      <td><span class="badge badge-correct">${item.scores.totalScore.toFixed(1)}</span></td>
-      <td>
-        <button class="btn btn-sm btn-secondary" onclick="viewSpecificStudent(${idx})">Karnesi</button>
-      </td>
-    `;
-    tbody.appendChild(tr);
-  });
-
-  updateResultHeaderAndStats(bulkList[0]);
-  renderQuestionTable(bulkList[0], keyObj);
-  renderDetectionCanvas(bulkList[0], keyObj);
-}
-
-function viewSpecificStudent(index) {
-  const student = state.bulkEvaluations[index];
-  const select = document.getElementById('active-key-select');
-  const keyObj = state.answerKeys[select.value] || Object.values(state.answerKeys)[0];
-
-  updateResultHeaderAndStats(student);
-  renderQuestionTable(student, keyObj);
-  renderDetectionCanvas(student, keyObj);
-  showToast(`${student.studentName} öğrencisinin karnesi yüklendi.`, 'info');
-}
-
-function updateResultHeaderAndStats(evalData) {
-  const scores = evalData.scores;
-  document.getElementById('result-exam-name').innerText = `${evalData.examTitle} Sonuç Raporu`;
-  document.getElementById('student-number-text').innerText = evalData.studentNumber;
-  document.getElementById('student-name-text').innerText = evalData.studentName;
-  document.getElementById('report-date').innerText = evalData.date;
-
-  document.getElementById('card-total-score').innerText = scores.totalScore.toFixed(2);
-  const maxLabel = document.querySelector('.score-max');
-  if (maxLabel && scores.maxExamScore) {
-    maxLabel.innerText = `/ ${scores.maxExamScore}`;
-  }
-  document.getElementById('card-total-questions').innerText = scores.totalQuestions;
-  document.getElementById('card-correct-count').innerText = scores.correct;
-  document.getElementById('card-wrong-count').innerText = scores.wrong;
-  document.getElementById('card-empty-count').innerText = scores.empty;
-  document.getElementById('card-net-count').innerText = scores.net.toFixed(2);
-  document.getElementById('card-success-rate').innerText = `%${scores.successRate}`;
-}
-
-function renderQuestionTable(evalData, keyObj) {
-  const tbody = document.getElementById('results-table-body');
-  tbody.innerHTML = '';
-  document.getElementById('table-row-count').innerText = `${evalData.scores.totalQuestions} Soru`;
-
-  const maxExamScore = keyObj.totalScore || evalData.scores.maxExamScore || 100;
-  const maxScore = (maxExamScore / evalData.scores.totalQuestions).toFixed(2);
-
-  for (let q = 1; q <= evalData.scores.totalQuestions; q++) {
-    const correctAns = keyObj.answers[q] || '-';
-    const studentAns = evalData.studentAnswers[q] || 'BOŞ';
-
-    let statusBadge = '';
-    let questionScore = 0;
-
-    if (studentAns === correctAns) {
-      statusBadge = '<span class="status-badge badge-correct">Doğru</span>';
-      questionScore = maxScore;
-    } else if (studentAns === 'BOŞ' || !studentAns) {
-      statusBadge = '<span class="status-badge badge-empty">Boş</span>';
-      questionScore = 0;
-    } else {
-      statusBadge = '<span class="status-badge badge-wrong">Yanlış</span>';
-      questionScore = 0;
-    }
-
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td><strong>Soru ${q}</strong></td>
-      <td><span class="bubble-btn selected" style="display:inline-flex; width:28px; height:28px; font-size:0.75rem;">${correctAns}</span></td>
-      <td><strong>${studentAns}</strong></td>
-      <td>${statusBadge}</td>
-      <td>+${questionScore}</td>
-    `;
-    tbody.appendChild(tr);
-  }
-}
-
-function renderDetectionCanvas(evalData, keyObj) {
-  const canvas = document.getElementById('omr-detection-canvas');
-  const ctx = canvas.getContext('2d');
-  const img = new Image();
-
-  img.onload = () => {
-    canvas.width = img.width;
-    canvas.height = img.height;
-    ctx.drawImage(img, 0, 0);
-
-    ctx.lineWidth = 3;
-    const startY = 140;
-    const rowHeight = 28;
-
-    for (let q = 1; q <= evalData.scores.totalQuestions; q++) {
-      const correctAns = keyObj.answers[q];
-      const studentAns = evalData.studentAnswers[q];
-
-      if (studentAns) {
-        const optIdx = OPTIONS.indexOf(studentAns);
-        if (optIdx !== -1) {
-          const x = 110 + optIdx * 36;
-          const y = startY + (q - 1) * rowHeight;
-          ctx.beginPath();
-          ctx.arc(x, y, 12, 0, 2 * Math.PI);
-          ctx.strokeStyle = studentAns === correctAns ? '#10b981' : '#f43f5e';
-          ctx.stroke();
-        }
-      }
-    }
-  };
-
-  img.src = state.selectedImageBase64 || document.getElementById('form-preview-img').src;
-}
-
-/* ==========================================================================
-   9. GEÇMİŞ SINAVLAR (HISTORY MODÜLÜ)
-   ========================================================================== */
-function initHistoryData() {
-  state.historyExams = [
-    { title: 'Matematik 1. Vize', type: 'Toplu (Sınıf)', date: '15.09.2026', count: 42, avg: 74.2 },
-    { title: 'Fizik Deneme Sınavı', type: 'Tekli Kağıt', date: '18.09.2026', count: 1, avg: 85.0 },
-    { title: 'Kimya 2. Ara Sınav', type: 'Toplu (Sınıf)', date: '22.09.2026', count: 38, avg: 68.5 }
-  ];
-}
-
-function renderHistoryTable() {
-  const tbody = document.getElementById('history-table-body');
-  tbody.innerHTML = '';
-
-  state.historyExams.forEach(item => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td><strong>${item.title}</strong></td>
-      <td><span class="badge badge-subtle">${item.type}</span></td>
-      <td>${item.date}</td>
-      <td>${item.count} Kağıt</td>
-      <td><strong>${item.avg}</strong> / 100</td>
-      <td>
-        <button class="btn btn-sm btn-secondary" onclick="showToast('Sınav detayı açılıyor...', 'info')">Detay Gör</button>
-      </td>
-    `;
-    tbody.appendChild(tr);
-  });
-}
-
-/* ==========================================================================
-   10. EXPORT (ClosedXML Excel & QuestPDF)
-   ========================================================================== */
-function exportExcel() {
-  const rows = [["Sıra", "Öğrenci No", "Ad Soyad", "Doğru", "Yanlış", "Boş", "Net", "Puan"]];
-
-  if (state.bulkEvaluations.length > 0) {
-    state.bulkEvaluations.forEach((item, idx) => {
-      rows.push([idx + 1, item.studentNumber, item.studentName, item.scores.correct, item.scores.wrong, item.scores.empty, item.scores.net, item.scores.totalScore]);
+    csvContent += `Soru No,Ders,Dogru Cevap,Ogrenci Cevabi,Durum,Puan\n`;
+    (evalData.questionsBreakdown || []).forEach(q => {
+      csvContent += `${q.num},"${q.courseName}",${q.correctAnswer},${q.studentAnswer},${q.status},${q.points}\n`;
     });
-  } else if (state.singleEvaluation) {
-    const s = state.singleEvaluation;
-    rows.push([1, s.studentNumber, s.studentName, s.scores.correct, s.scores.wrong, s.scores.empty, s.scores.net, s.scores.totalScore]);
+    csvContent += `\nToplam Soru,${evalData.totalQuestions}\n`;
+    csvContent += `Dogru,${evalData.correctCount}\n`;
+    csvContent += `Yanlis,${evalData.wrongCount}\n`;
+    csvContent += `Bos,${evalData.emptyCount}\n`;
+    csvContent += `Net,${evalData.netScore}\n`;
+    csvContent += `Toplam Puan,${evalData.finalScore}\n`;
   }
 
-  const csvContent = "data:text/csv;charset=utf-8,\uFEFF" + rows.map(e => e.join(";")).join("\n");
-  const link = document.createElement("a");
-  link.setAttribute("href", encodeURI(csvContent));
-  link.setAttribute("download", `OptikSinav_Sonuc_${Date.now()}.csv`);
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.setAttribute('href', url);
+  link.setAttribute('download', `OptiMatrix_${state.config.examTitle.replace(/\s+/g, '_')}_Sonuclari.csv`);
   document.body.appendChild(link);
   link.click();
-  link.remove();
-  showToast('Excel uyumlu sonuç listesi (.csv) indirildi.', 'success');
-}
-
-/* ==========================================================================
-   11. API AYARLARI MODALI
-   ========================================================================== */
-function openApiSettingsModal() {
-  document.getElementById('api-base-url-input').value = state.apiConfig.endpointUrl;
-  document.getElementById('signalr-hub-url-input').value = state.apiConfig.signalrHubUrl;
-  document.getElementById('api-modal').classList.remove('hidden');
-}
-
-function closeApiSettingsModal() {
-  document.getElementById('api-modal').classList.add('hidden');
-}
-
-function saveApiSettings() {
-  state.apiConfig.endpointUrl = document.getElementById('api-base-url-input').value.trim();
-  state.apiConfig.signalrHubUrl = document.getElementById('signalr-hub-url-input').value.trim();
-  document.getElementById('api-endpoint-label').innerText = state.apiConfig.endpointUrl;
-  showToast('API ve SignalR Hub adresleri güncellendi.', 'success');
-  closeApiSettingsModal();
-}
-
-function loadStoredSettings() {
-  const savedUrl = localStorage.getItem('omr_api_url');
-  if (savedUrl) state.apiConfig.endpointUrl = savedUrl;
-}
-
-function showToast(message, type = 'info') {
-  const container = document.getElementById('toast-container');
-  if (!container) return;
-  const toast = document.createElement('div');
-  toast.className = `toast ${type}`;
-  toast.innerText = message;
-  container.appendChild(toast);
-  setTimeout(() => {
-    toast.style.opacity = '0';
-    toast.style.transition = 'opacity 0.3s ease';
-    setTimeout(() => toast.remove(), 300);
-  }, 3500);
+  document.body.removeChild(link);
+  showToast('Sonuçlar Excel (.csv) formatında indirildi.', 'success');
 }
